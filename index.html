@@ -330,6 +330,8 @@
       <div id="mates"></div>
 
       <div class="sect-title">🍴 우리 그룹 추천 식당</div>
+      <button class="heart-btn" id="nearbyBtn" style="margin:0 0 12px;font-size:14px;padding:10px 18px">📍 내 주변 실제 식당 찾기</button>
+      <p class="hint" id="nearbyStatus" style="display:none;margin:0 0 12px"></p>
       <div id="restos"></div>
 
       <div class="sect-title">🔴 라이브 룸 — 실시간 전체 매칭</div>
@@ -780,6 +782,7 @@ function renderMates(me, pool, realNicks) {
 
 function renderRestos(me, matePeople) {
   const group = [me, ...matePeople];
+  currentGroup = group;
   const recs = recommendRestos(group);
   const restosEl = document.getElementById("restos");
   restosEl.innerHTML = "";
@@ -887,6 +890,166 @@ function renderCatStats(all) {
   el.innerHTML = sorted.map(([c,n])=>bar(c, n, max)).join("");
   animateBars(el, sorted.map(s=>s[1]), max);
 }
+
+/* ====== 📍 GPS 현재 위치 기반 실제 식당 추천 (OpenStreetMap Overpass API) ====== */
+// 현재 결과 그룹(나 + 밥메이트)을 기억해 두고, 위치 검색 시 이 그룹 취향으로 랭킹
+let currentGroup = null;
+
+// OSM cuisine 태그 → 밥BTI 9개 카테고리 매핑
+const CUISINE_MAP = {
+  korean:"한식", korea:"한식", bibimbap:"한식", gukbap:"한식",
+  chinese:"중식", jjajangmyeon:"중식",
+  japanese:"일식", sushi:"일식", ramen:"일식", udon:"일식", donburi:"일식",
+  italian:"양식", pizza:"양식", pasta:"양식", western:"양식", american:"양식",
+  french:"양식", spaghetti:"양식", steak:"고기",
+  noodle:"면류", noodles:"면류", pho:"면류", vietnamese:"면류",
+  cafe:"카페/디저트", coffee_shop:"카페/디저트", dessert:"카페/디저트",
+  ice_cream:"카페/디저트", bakery:"카페/디저트", cake:"카페/디저트",
+  bbq:"고기", barbecue:"고기", korean_bbq:"고기", meat:"고기", chicken:"고기",
+  salad:"샐러드/건강", vegetarian:"샐러드/건강", vegan:"샐러드/건강", healthy:"샐러드/건강",
+  thai:"양식", indian:"양식", mexican:"양식"
+};
+const CAT_ICON = {
+  "한식":"🍚","중식":"🥡","일식":"🍱","양식":"🍝","분식":"🍙",
+  "고기":"🥩","면류":"🍜","카페/디저트":"☕","샐러드/건강":"🥗"
+};
+
+// 두 좌표 간 거리(m) — 하버사인
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371000, toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat/2)**2 +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// OSM 요소 → 식당 객체로 변환 (이름 없으면 제외)
+function osmToResto(el) {
+  const t = el.tags || {};
+  const name = t.name || t["name:ko"] || t["name:en"];
+  if (!name) return null;
+  const lat = el.lat != null ? el.lat : (el.center && el.center.lat);
+  const lon = el.lon != null ? el.lon : (el.center && el.center.lon);
+  if (lat == null || lon == null) return null;
+
+  const cats = [];
+  (t.cuisine || "").toLowerCase().split(/[;,_\s]+/).forEach(c => {
+    const m = CUISINE_MAP[c];
+    if (m && !cats.includes(m)) cats.push(m);
+  });
+  if (cats.length === 0) {
+    if (t.amenity === "cafe") cats.push("카페/디저트");
+    else if (t.amenity === "fast_food") cats.push("분식");
+  }
+  const ico = cats.length ? (CAT_ICON[cats[0]] || "🍴") : "🍴";
+  return { name, lat, lon, cats, rawCuisine: t.cuisine || "", ico };
+}
+
+// Overpass API로 주변 음식점 검색 (키 불필요)
+async function fetchNearbyRestos(lat, lon, radius) {
+  const filter = `["amenity"~"^(restaurant|fast_food|cafe)$"]`;
+  const q =
+    `[out:json][timeout:20];(` +
+    `node${filter}(around:${radius},${lat},${lon});` +
+    `way${filter}(around:${radius},${lat},${lon});` +
+    `);out center 100;`;
+  const res = await fetch("https://overpass-api.de/api/interpreter", {
+    method: "POST",
+    headers: { "Accept": "application/json" },
+    body: "data=" + encodeURIComponent(q)
+  });
+  if (!res.ok) throw new Error("Overpass " + res.status);
+  const json = await res.json();
+  return (json.elements || []).map(osmToResto).filter(Boolean);
+}
+
+// 그룹 취향 + 거리로 실제 식당 랭킹
+function rankRealRestos(group, list) {
+  const votes = {};
+  group.forEach(p => p.cats.forEach(c => votes[c] = (votes[c]||0)+1));
+  const maxDist = Math.max(...list.map(r => r.dist), 1);
+  return list.map(r => {
+    // 카테고리 점수(그룹 투표 비율). 카테고리 미상이면 작은 기본값
+    const catScore = r.cats.length
+      ? r.cats.reduce((s,c)=>s+(votes[c]||0),0) / group.length
+      : 0.15;
+    const distScore = 1 - r.dist / maxDist;           // 가까울수록 높음
+    const total = catScore*0.45 + distScore*0.45 + 0.10;
+    return { r, total };
+  }).sort((a,b)=>b.total-a.total);
+}
+
+// 실제 식당으로 추천 카드 렌더
+function renderRealRestos(group, list) {
+  const scored = rankRealRestos(group, list).slice(0, 4);
+  const el = document.getElementById("restos");
+  el.innerHTML = "";
+  scored.forEach((x, i) => {
+    const r = x.r;
+    const distTxt = r.dist < 1000
+      ? Math.round(r.dist) + "m"
+      : (r.dist/1000).toFixed(1) + "km";
+    const catTxt = r.cats.length ? r.cats.join("·")
+      : (r.rawCuisine ? esc(r.rawCuisine) : "음식점");
+    const mapUrl = "https://map.kakao.com/link/search/" + encodeURIComponent(r.name);
+    const div = document.createElement("div");
+    div.className = "resto";
+    div.innerHTML =
+      `<div class="top">
+         <span class="rico">${r.ico}</span>
+         <span class="rnm">${esc(r.name)}</span>
+         <span class="rank">${RANK[i] || (i+1)+"순위"}</span>
+       </div>
+       <div class="meta">
+         <span class="tag">${catTxt}</span>
+         <span class="tag">📍 ${distTxt}</span>
+         <span class="tag"><a href="${mapUrl}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">🗺️ 지도에서 보기</a></span>
+       </div>
+       <div class="why">현재 위치에서 ${distTxt} · 우리 그룹 취향과 매칭된 실제 식당이에요!</div>`;
+    el.appendChild(div);
+  });
+}
+
+// 위치 권한 → 검색 → 렌더 흐름
+function findNearby() {
+  const status = document.getElementById("nearbyStatus");
+  const btn = document.getElementById("nearbyBtn");
+  status.style.display = "block";
+
+  if (!navigator.geolocation) {
+    status.textContent = "⚠️ 이 브라우저는 위치 기능을 지원하지 않아요.";
+    return;
+  }
+  status.textContent = "📍 현재 위치를 확인하는 중…";
+  btn.disabled = true;
+
+  navigator.geolocation.getCurrentPosition(pos => {
+    const { latitude: lat, longitude: lon } = pos.coords;
+    status.textContent = "🍽️ 주변 식당을 검색하는 중…";
+    fetchNearbyRestos(lat, lon, 800).then(list => {
+      btn.disabled = false;
+      if (!list.length) {
+        status.innerHTML = "😅 주변에서 식당 데이터를 찾지 못했어요. <b>큐레이션 추천</b>을 그대로 보여드릴게요.";
+        return;
+      }
+      list.forEach(r => r.dist = haversine(lat, lon, r.lat, r.lon));
+      const group = currentGroup && currentGroup.length ? currentGroup : [];
+      status.innerHTML = `📍 현재 위치 기준 <b>${list.length}곳</b> 중 우리 그룹 취향과 가까운 곳을 추천했어요!`;
+      renderRealRestos(group, list);
+    }).catch(err => {
+      btn.disabled = false;
+      console.warn("주변 식당 검색 실패:", err);
+      status.textContent = "⚠️ 식당 검색에 실패했어요. 잠시 후 다시 시도해주세요. (큐레이션 추천은 그대로 표시돼요)";
+    });
+  }, err => {
+    btn.disabled = false;
+    status.textContent = err.code === 1
+      ? "🔒 위치 권한이 거부됐어요. 권한을 허용하면 주변 실제 식당을 찾아드려요."
+      : "⚠️ 현재 위치를 가져오지 못했어요. 잠시 후 다시 시도해주세요.";
+  }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+}
+
+document.getElementById("nearbyBtn").onclick = findNearby;
 
 /* ====== 라이브 룸 (Firebase Realtime DB) ====== */
 let roomRef = null;
