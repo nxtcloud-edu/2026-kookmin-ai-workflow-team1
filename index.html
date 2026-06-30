@@ -190,6 +190,13 @@
   .sync-spin { display: none; }
   .sync-badge.syncing .sync-spin { display: inline-block; animation: spin .7s linear infinite; }
 
+  /* 재방문 배너 */
+  .return-banner {
+    display: flex; align-items: center; gap: 12px;
+    background: #e8f8f0; border: 1.5px solid var(--good);
+    border-radius: 14px; padding: 16px; margin-top: 18px;
+  }
+
   @media (max-width: 480px) {
     .hero h1 { font-size: 33px; }
     .seg { grid-template-columns: repeat(3, 1fr); }
@@ -207,6 +214,33 @@
   </header>
 
   <main class="wrap">
+
+    <!-- ============ 랜딩 — 닉네임 + 비밀번호 ============ -->
+    <section class="card" id="landing" style="margin-top:22px">
+      <h2>👋 시작하기</h2>
+      <p class="hint">닉네임과 비밀번호를 입력하면 내 취향이 저장돼요.<br/>처음이면 바로 계정이 만들어지고, 재방문이면 내 취향이 불러와져요!</p>
+      <div class="field">
+        <label>닉네임</label>
+        <input type="text" id="loginNick" placeholder="예) 점심요정" maxlength="12" />
+      </div>
+      <div class="field">
+        <label>비밀번호 <span class="desc">나만 아는 숫자나 단어 (예: 1234)</span></label>
+        <input type="password" id="loginPw" placeholder="예) 1234" maxlength="20" />
+        <p style="color:var(--muted);font-size:12.5px;margin-top:6px">⚠️ 남이 내 닉네임을 쓰려면 비번이 달라서 차단돼요. 재방문 시 같은 비번으로 이전 취향이 복원돼요.</p>
+      </div>
+      <button class="btn" id="loginBtn">시작하기 →</button>
+      <p class="err" id="loginErr"></p>
+    </section>
+
+    <!-- ============ 로그인 후 콘텐츠 ============ -->
+    <div id="mainContent" style="display:none">
+
+    <!-- 활성 룸 목록 -->
+    <section class="card" id="roomListCard" style="margin-top:18px">
+      <h2>🔴 지금 열린 룸</h2>
+      <p class="hint">현재 접속 중인 룸 목록이에요. 입장하면 같이 매칭돼요!</p>
+      <div id="roomListWrap" style="margin-top:10px"></div>
+    </section>
 
     <!-- ============ 입력 폼 ============ -->
     <section class="card" id="form">
@@ -320,6 +354,8 @@
 
       <button class="btn ghost" id="retryBtn">↩️ 다시 해보기</button>
     </section>
+
+    </div><!-- /mainContent -->
 
     <footer>
       밥BTI · AWS 부트캠프 팀 프로젝트 · 취향 데이터 기반 매칭 데모
@@ -541,16 +577,21 @@ document.querySelectorAll("#amountSeg .chip").forEach(el => {
 
 // 제출
 document.getElementById("submitBtn").onclick = () => {
-  const nick = document.getElementById("nick").value.trim();
   const err = document.getElementById("err");
-  if (!nick || selectedCats.size === 0) { err.style.display = "block"; return; }
+  if (selectedCats.size === 0) {
+    err.textContent = "⚠️ 음식을 1개 이상 골라주세요!";
+    err.style.display = "block";
+    return;
+  }
   err.style.display = "none";
-
+  const nick = currentUser ? currentUser.nick : document.getElementById("nick").value.trim();
   const me = {
     nick, cats:[...selectedCats],
     spicy:Number(spicy.value), salty:Number(salty.value), sweet:Number(sweet.value), herb,
     budget:Number(budget.value), amount
   };
+  saveUserPrefs(me);
+  saveParticipant(me);
   renderResult(me);
   joinRoom(me);
 };
@@ -592,6 +633,114 @@ const RANK = ["1순위","2순위","3순위"];
 
 let participantsListener = null;
 let syncTimer = null;
+
+/* ---- 비밀번호 기반 세션 ---- */
+let currentUser = null;
+
+function getSession() {
+  try { return JSON.parse(localStorage.getItem("babbtiSession") || "null"); } catch { return null; }
+}
+
+async function tryLogin(nick, pw) {
+  if (!nick || !pw) return { ok: false, msg: "닉네임과 비밀번호를 모두 입력해주세요." };
+  if (!FIREBASE_ON) { enterSession({ nick, pw }); return { ok: true, isNew: true }; }
+
+  const snap = await db.ref("users/" + encodeURIComponent(nick)).once("value");
+  if (!snap.exists()) {
+    await db.ref("users/" + encodeURIComponent(nick)).set({ pw, lastSeen: Date.now() });
+    enterSession({ nick, pw });
+    return { ok: true, isNew: true };
+  }
+  const data = snap.val();
+  if (data.pw !== pw) return { ok: false, msg: "비밀번호가 틀렸어요! 다시 확인해주세요." };
+  await db.ref("users/" + encodeURIComponent(nick)).update({ lastSeen: Date.now() });
+  enterSession({ nick, pw, ...data });
+  return { ok: true, isNew: false, hasPrefs: !!data.cats };
+}
+
+function enterSession(user) {
+  currentUser = user;
+  localStorage.setItem("babbtiSession", JSON.stringify({ nick: user.nick, pw: user.pw }));
+  document.getElementById("landing").style.display = "none";
+  document.getElementById("mainContent").style.display = "block";
+  const nickEl = document.getElementById("nick");
+  nickEl.value = user.nick;
+  nickEl.readOnly = true;
+  nickEl.style.cssText += ";opacity:.7;cursor:default";
+  if (user.cats) {
+    fillFormFromData(user);
+    showContinueBanner(user.nick, user);
+  }
+  initRoomList();
+}
+
+function saveUserPrefs(me) {
+  if (!FIREBASE_ON || !currentUser) return;
+  db.ref("users/" + encodeURIComponent(me.nick)).update({
+    cats: me.cats, spicy: me.spicy, budget: me.budget, amount: me.amount, lastSeen: Date.now()
+  });
+}
+
+function fillFormFromData(data) {
+  const cats = Array.isArray(data.cats) ? data.cats : Object.values(data.cats || {});
+  cats.forEach(c => {
+    selectedCats.add(c);
+    document.querySelectorAll("#catChips .chip").forEach(el => {
+      if (el.textContent === c) el.classList.add("on");
+    });
+  });
+  if (data.spicy !== undefined) { spicy.value = data.spicy; updSpicy(); }
+  if (data.budget !== undefined) { budget.value = data.budget; updBudget(); }
+  if (data.amount !== undefined) {
+    amount = data.amount;
+    document.querySelectorAll("#amountSeg .chip").forEach(el => {
+      el.classList.toggle("on", Number(el.dataset.amount) === data.amount);
+    });
+  }
+}
+
+function showContinueBanner(nick, data) {
+  const old = document.getElementById("returnBanner");
+  if (old) old.remove();
+  const banner = document.createElement("div");
+  banner.id = "returnBanner";
+  banner.className = "return-banner";
+  banner.innerHTML =
+    `<div style="font-size:26px">👋</div>
+     <div style="flex:1">
+       <div style="font-weight:800;font-size:15px">${esc(nick)}님, 어서오세요!</div>
+       <div style="color:var(--muted);font-size:13px;margin-top:3px">저번 취향이 저장돼 있어요. 바로 이어서 볼까요?</div>
+     </div>
+     <button id="continueBtn" class="btn" style="width:auto;margin:0;padding:10px 20px;font-size:14px">이어서 보기 →</button>`;
+  document.getElementById("form").appendChild(banner);
+  document.getElementById("continueBtn").onclick = () => {
+    banner.remove();
+    const cats = Array.isArray(data.cats) ? data.cats : Object.values(data.cats || {});
+    const me = { nick, cats, spicy: data.spicy, budget: data.budget, amount: data.amount };
+    saveParticipant(me);
+    renderResult(me);
+    joinRoom(me);
+  };
+}
+
+// 랜딩 버튼
+document.getElementById("loginBtn").onclick = async () => {
+  const nick = document.getElementById("loginNick").value.trim();
+  const pw   = document.getElementById("loginPw").value;
+  const err  = document.getElementById("loginErr");
+  err.style.display = "none";
+  const btn = document.getElementById("loginBtn");
+  btn.disabled = true; btn.textContent = "확인 중...";
+  const result = await tryLogin(nick, pw);
+  btn.disabled = false; btn.textContent = "시작하기 →";
+  if (!result.ok) { err.textContent = "⚠️ " + result.msg; err.style.display = "block"; return; }
+  if (result.isNew) document.getElementById("form").scrollIntoView({ behavior: "smooth" });
+};
+["loginNick", "loginPw"].forEach(id =>
+  document.getElementById(id).addEventListener("keydown", e => {
+    if (e.key === "Enter") document.getElementById("loginBtn").click();
+  })
+);
 
 function showSyncBadge(count) {
   const badge = document.getElementById("syncBadge");
@@ -683,8 +832,7 @@ function renderResult(me) {
   res.style.display = "block";
   res.scrollIntoView({ behavior:"smooth" });
 
-  // Firebase 참여자 저장 + 실시간 리스너로 지속 반영
-  saveParticipant(me);
+  // 실시간 리스너로 지속 반영
   if (FIREBASE_ON) {
     if (participantsListener) {
       db.ref("participants").off("value", participantsListener);
@@ -840,6 +988,51 @@ function formGroups(members, size) {
   }
   return groups;
 }
+
+/* ---- 활성 룸 목록 (enterSession에서 호출) ---- */
+function initRoomList() {
+  if (!FIREBASE_ON) return;
+  const el = document.getElementById("roomListWrap");
+  if (!el) return;
+  db.ref("rooms").on("value", snap => {
+    const data = snap.val() || {};
+    const now = Date.now();
+    const rooms = Object.entries(data)
+      .map(([code, room]) => {
+        const members = Object.values(room.members || {})
+          .filter(m => !m.ts || now - m.ts < 600000);
+        return { code, count: members.length, likes: room.likes || 0 };
+      })
+      .filter(r => r.count > 0)
+      .sort((a, b) => b.count - a.count);
+
+    if (rooms.length === 0) {
+      el.innerHTML = `<p class="hint" style="margin-top:8px">현재 활성 룸이 없어요.</p>`;
+      return;
+    }
+    el.innerHTML = rooms.map(r =>
+      `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)">
+         <span style="font-weight:800;font-size:15px">#${esc(r.code)}</span>
+         <span class="tag" style="background:#fff1ea;color:var(--primary-d);font-weight:700">👥 ${r.count}명</span>
+         <span class="tag" style="background:#f6efe9;color:var(--muted)">❤️ ${r.likes}</span>
+         <button onclick="document.getElementById('room').value='${esc(r.code)}'"
+           style="margin-left:auto;font-size:12px;font-weight:700;border:1.5px solid #ffd2c6;background:#fff;color:var(--primary-d);padding:5px 12px;border-radius:999px;cursor:pointer">
+           이 룸 입장
+         </button>
+       </div>`
+    ).join("");
+  });
+}
+
+/* ---- 자동 로그인 (페이지 로드 시) ---- */
+(async function initAutoLogin() {
+  const saved = getSession();
+  if (!saved || !saved.nick || !saved.pw) return;
+  document.getElementById("loginNick").value = saved.nick;
+  document.getElementById("loginPw").value = saved.pw;
+  const result = await tryLogin(saved.nick, saved.pw);
+  if (!result.ok) localStorage.removeItem("babbtiSession");
+})();
 </script>
 </body>
 </html>
