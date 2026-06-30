@@ -152,6 +152,14 @@
   .type-card .tname { font-size:30px; font-weight:800; margin-top:14px; letter-spacing:-1px; color:#fff; position:relative; }
   .type-card .tdesc { font-size:14px; color:rgba(255,255,255,.7); margin-top:10px; line-height:1.7; position:relative; }
   .type-card .tnick { font-size:12px; color:rgba(255,255,255,.45); margin-top:16px; font-weight:600; position:relative; letter-spacing:.3px; }
+  .share-result-btn {
+    margin-top:16px; width:100%; background:rgba(255,255,255,.15);
+    color:#fff; border:1.5px solid rgba(255,255,255,.45); border-radius:999px;
+    padding:9px 0; font-size:13px; font-weight:700; cursor:pointer;
+    font-family:inherit; transition:background .15s; position:relative;
+  }
+  .share-result-btn:hover { background:rgba(255,255,255,.28); }
+  .share-result-btn:active { opacity:.8; }
 
   .sect-title { font-size:16px; font-weight:800; margin:40px 0 14px; display:flex; align-items:center; gap:8px; letter-spacing:-.3px; }
 
@@ -316,14 +324,12 @@
     transition:background .1s, border-color .1s;
   }
   .room-enter-btn:hover { background:#fff3ef; border-color:var(--primary); color:var(--primary); }
-  .share-result-btn {
-    margin-top:14px; width:100%; background:rgba(255,255,255,.15);
-    color:#fff; border:1.5px solid rgba(255,255,255,.45); border-radius:999px;
-    padding:9px 0; font-size:13px; font-weight:700; cursor:pointer;
-    font-family:inherit; transition:background .15s;
+  .copy-code-btn {
+    background:var(--primary); color:#fff; border:none; border-radius:8px;
+    padding:3px 10px; font-size:12px; font-weight:700; cursor:pointer;
+    margin-left:10px; font-family:inherit; transition:opacity .15s;
   }
-  .share-result-btn:hover { background:rgba(255,255,255,.28); }
-  .share-result-btn:active { opacity:.8; }
+  .copy-code-btn:active { opacity:.75; }
 
   @media (max-width:480px) {
     .hero h1 { font-size:42px; letter-spacing:-2px; }
@@ -336,6 +342,63 @@
     .type-card .tname { font-size:24px; }
     .seg { grid-template-columns:repeat(3,1fr); }
     .card { padding:20px; }
+  }
+  /* ===== 이식: 입력 스텝 위저드 ===== */
+  .stepper { display: flex; align-items: center; gap: 8px; margin: 4px 0 24px; }
+  .st { display: flex; align-items: center; gap: 9px; }
+  .step-dot {
+    width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 13px; font-weight: 800; background: var(--card-soft); color: var(--muted);
+    flex-shrink: 0; transition: background .2s, color .2s;
+  }
+  .st.active .step-dot { background: var(--primary); color: #fff; }
+  .st.done .step-dot { background: var(--good); color: #fff; }
+  .st-label { font-size: 13.5px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+  .st.active .st-label, .st.done .st-label { color: var(--ink); }
+  .st-line { flex: 1; height: 2px; min-width: 14px; background: var(--line); border-radius: 2px; transition: background .25s; }
+  .st-line.filled { background: var(--good); }
+  .step { display: none; }
+  .step.active { display: block; animation: panelIn .26s cubic-bezier(.2,.8,.2,1); }
+  .step .field:first-of-type { margin-top: 0; }
+  .step-title { font-size: 17px; font-weight: 800; letter-spacing: -.3px; }
+  .step-sub { color: var(--muted); font-size: 13.5px; margin-top: 3px; }
+  .step-nav { display: flex; gap: 10px; margin-top: 28px; }
+  .step-nav .btn { margin-top: 0; width: auto; flex: 1; }
+  .step-nav .btn.ghost { flex: 0 0 auto; padding-left: 24px; padding-right: 24px; }
+  @media (max-width: 420px) { .st-label { display: none; } }
+
+  /* ===== 이식: 결과 좌측 탭 네비게이션 + 패널 ===== */
+  .result-shell { display: grid; grid-template-columns: 220px 1fr; gap: 24px; align-items: start; }
+  .result-nav {
+    position: sticky; top: 18px; background: var(--card); border: 1px solid var(--line);
+    border-radius: 16px; padding: 14px; box-shadow: var(--shadow-lift);
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .rn-head { font-size: 11.5px; font-weight: 800; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; padding: 6px 12px 12px; }
+  .rn-item {
+    text-align: left; border: none; background: transparent; cursor: pointer;
+    font-family: inherit; font-size: 14.5px; font-weight: 700; color: var(--ink);
+    padding: 11px 14px; border-radius: 11px; transition: background .14s, color .14s;
+    display: flex; align-items: center; gap: 10px; width: 100%;
+  }
+  .rn-item:hover { background: var(--card-soft); }
+  .rn-item.active { background: var(--primary); color: #fff; }
+  .rn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+  .rn-item.active .rn-dot { background: #fff; }
+  .panel { display: none; }
+  .panel.active { display: block; animation: panelIn .28s cubic-bezier(.2,.8,.2,1); }
+  @keyframes panelIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .panel > .sect-title:first-child { margin-top: 0; }
+  @media (max-width: 720px) {
+    .result-shell { grid-template-columns: 1fr; gap: 14px; }
+    .result-nav {
+      position: sticky; top: 0; z-index: 30; flex-direction: row; overflow-x: auto;
+      border-radius: 14px; padding: 7px; gap: 5px; -webkit-overflow-scrolling: touch;
+    }
+    .result-nav::-webkit-scrollbar { display: none; }
+    .rn-head { display: none; }
+    .rn-item { white-space: nowrap; padding: 9px 14px; font-size: 13.5px; width: auto; }
+    .rn-dot { display: none; }
   }
 </style>
 </head>
@@ -394,145 +457,191 @@
       <div id="roomListWrap" style="margin-top:10px"></div>
     </section>
 
-    <!-- ============ 입력 폼 ============ -->
+    <!-- ============ 입력 폼 (3단계 위저드) ============ -->
     <section class="card" id="form">
       <h2>🙋 내 취향 입력하기</h2>
       <p class="hint">정답은 없어요. 끌리는 대로 골라주세요!</p>
 
-      <div class="field">
-        <label>🔴 라이브 룸 코드 <span class="desc">같은 코드끼리 실시간 매칭</span></label>
-        <input type="text" id="room" placeholder="예) CS21" value="lunch" maxlength="16" />
+      <div class="stepper" id="stepper">
+        <div class="st active" data-i="1"><span class="step-dot">1</span><span class="st-label">음식</span></div>
+        <div class="st-line"></div>
+        <div class="st" data-i="2"><span class="step-dot">2</span><span class="st-label">맛 취향</span></div>
+        <div class="st-line"></div>
+        <div class="st" data-i="3"><span class="step-dot">3</span><span class="st-label">예산·매칭</span></div>
       </div>
 
-      <div class="field">
-        <label>닉네임</label>
-        <input type="text" id="nick" placeholder="예) 점심요정" maxlength="12" />
-      </div>
-
-      <div class="field">
-        <label>좋아하는 음식 <span class="desc">분류를 누르면 메뉴가 떠요 · 여러 개 선택 가능</span></label>
-        <div class="chips" id="catChips"></div>
-        <div class="chips" id="dishPanel" style="margin-top:10px"></div>
-      </div>
-
-      <div class="field">
-        <label>매운맛 선호도</label>
-        <div class="slider-row">
-          <input type="range" id="spicy" min="0" max="5" step="1" value="2" />
-          <span class="slider-val" id="spicyVal"></span>
+      <!-- STEP 1 -->
+      <div class="step active" data-step="1">
+        <div class="step-title">무엇이 끌리나요?</div>
+        <p class="step-sub">분류를 누르면 메뉴가 떠요 · 여러 개 선택 가능</p>
+        <div class="field">
+          <div class="chips" id="catChips"></div>
+          <div class="chips" id="dishPanel" style="margin-top:10px"></div>
         </div>
       </div>
 
-      <div class="field">
-        <label>짠맛 선호도</label>
-        <div class="slider-row">
-          <input type="range" id="salty" min="0" max="3" step="1" value="1" />
-          <span class="slider-val" id="saltyVal"></span>
+      <!-- STEP 2 -->
+      <div class="step" data-step="2">
+        <div class="step-title">맛은 어떻게 좋아하세요?</div>
+        <p class="step-sub">평소 입맛에 가깝게 맞춰주세요</p>
+        <div class="field">
+          <label>매운맛 선호도</label>
+          <div class="slider-row">
+            <input type="range" id="spicy" min="0" max="5" step="1" value="2" />
+            <span class="slider-val" id="spicyVal"></span>
+          </div>
         </div>
-      </div>
-
-      <div class="field">
-        <label>단맛 선호도</label>
-        <div class="slider-row">
-          <input type="range" id="sweet" min="0" max="3" step="1" value="1" />
-          <span class="slider-val" id="sweetVal"></span>
+        <div class="field">
+          <label>짠맛 선호도</label>
+          <div class="slider-row">
+            <input type="range" id="salty" min="0" max="3" step="1" value="1" />
+            <span class="slider-val" id="saltyVal"></span>
+          </div>
         </div>
-      </div>
-
-      <div class="field">
-        <label>향신료 선호 <span class="desc">고수·허브·민트 등</span></label>
-        <div class="seg" id="herbSeg">
-          <div class="chip" data-herb="-1">🚫 싫어요</div>
-          <div class="chip on" data-herb="0">😐 상관없어요</div>
-          <div class="chip" data-herb="1">🌿 좋아요</div>
+        <div class="field">
+          <label>단맛 선호도</label>
+          <div class="slider-row">
+            <input type="range" id="sweet" min="0" max="3" step="1" value="1" />
+            <span class="slider-val" id="sweetVal"></span>
+          </div>
         </div>
-      </div>
-
-      <div class="field">
-        <label>한 끼 예산</label>
-        <div class="slider-row">
-          <input type="range" id="budget" min="6000" max="16000" step="1000" value="10000" />
-          <span class="slider-val" id="budgetVal"></span>
-        </div>
-      </div>
-
-      <div class="field">
-        <label>메뉴 결정 스타일</label>
-        <div class="seg" id="amountSeg">
-          <div class="chip" data-amount="0">✋ 내가 정할게</div>
-          <div class="chip on" data-amount="1">🤝 같이 정하자</div>
-          <div class="chip" data-amount="2">😌 아무거나 OK</div>
-        </div>
-      </div>
-
-      <button class="btn" id="submitBtn">🔍 내 밥메이트 찾기</button>
-      <p class="err" id="err">⚠️ 닉네임을 입력하고 음식을 1개 이상 골라주세요!</p>
-    </section>
-
-    <!-- ============ 결과 ============ -->
-    <section id="result">
-
-      <div class="type-card" id="typeCard">
-        <div class="emoji" id="typeEmoji">🍲</div>
-        <div class="tname" id="typeName">밸런스 미식가</div>
-        <div class="tdesc" id="typeDesc"></div>
-        <div class="tnick" id="typeNick"></div>
-        <button class="share-result-btn" id="shareResultBtn" onclick="shareResult()">🔗 내 밥BTI 공유하기</button>
-      </div>
-
-      <div class="sect-title">🤝 나랑 잘 맞는 밥메이트 <span class="sync-badge" id="syncBadge"><span class="sync-spin">🔄</span><span id="syncText"></span></span></div>
-      <div id="mates"></div>
-
-      <div id="aiSection" style="display:none;margin-top:16px">
-        <div class="sect-title" style="margin-top:0">🤖 AI 매칭 코멘트</div>
-        <div class="card" style="margin-top:0;padding:18px 20px">
-          <p id="aiStatus" style="color:var(--primary-d);font-weight:700;font-size:14px">✨ Claude AI가 코멘트를 생성하는 중...</p>
-          <p id="aiComment" style="line-height:1.75;font-size:15px;display:none"></p>
-        </div>
-      </div>
-
-      <div class="sect-title">🍴 우리 그룹 추천 메뉴</div>
-      <p class="hint" id="restoHint" style="margin:0 0 12px">메뉴를 누르면 📍 현재 위치 주변에서 그 메뉴를 파는 <b>실제 식당</b>을 찾아드려요!</p>
-      <div id="restos"></div>
-
-      <div class="sect-title">🔴 라이브 룸 — 실시간 전체 매칭</div>
-      <div class="card" style="margin-top:0">
-        <p class="hint" id="liveStatus" style="font-weight:700;color:var(--ink)">실시간 룸에 연결 중…</p>
-        <div id="liveGroups"></div>
-        <button class="heart-btn" id="resetRoomBtn" style="margin-top:14px;font-size:13px;padding:8px 16px;display:none">🗑️ 룸 비우기</button>
-
-        <!-- 룸 채팅 -->
-        <div id="chatWrap" style="display:none;margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
-          <p style="font-weight:800;font-size:14px;margin-bottom:8px;color:var(--ink)">💬 룸 채팅</p>
-          <div id="chatMsgs"></div>
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <input type="text" id="chatInput" placeholder="메시지를 입력하세요..." maxlength="100" />
-            <button id="chatSendBtn">전송</button>
+        <div class="field">
+          <label>향신료 선호 <span class="desc">고수·허브·민트 등</span></label>
+          <div class="seg" id="herbSeg">
+            <div class="chip" data-herb="-1">🚫 싫어요</div>
+            <div class="chip on" data-herb="0">😐 상관없어요</div>
+            <div class="chip" data-herb="1">🌿 좋아요</div>
           </div>
         </div>
       </div>
 
-      <div class="sect-title">📊 우리 반 취향 통계</div>
-      <div class="card" style="margin-top:0">
-        <p class="hint" style="margin-bottom:14px;font-weight:700;color:var(--ink)">🌶️ 매운맛 분포</p>
-        <div id="spicyStats"></div>
-        <p class="hint" style="margin:18px 0 14px;font-weight:700;color:var(--ink)">🧂 짠맛 분포</p>
-        <div id="saltyStats"></div>
-        <p class="hint" style="margin:18px 0 14px;font-weight:700;color:var(--ink)">🍬 단맛 분포</p>
-        <div id="sweetStats"></div>
-        <p class="hint" style="margin:18px 0 14px;font-weight:700;color:var(--ink)">🌿 향신료 선호</p>
-        <div id="herbStats"></div>
-        <p class="hint" style="margin:18px 0 14px;font-weight:700;color:var(--ink)">🍽️ 인기 음식 TOP</p>
-        <div id="catStats"></div>
+      <!-- STEP 3 -->
+      <div class="step" data-step="3">
+        <div class="step-title">예산과 매칭 설정</div>
+        <p class="step-sub">마지막이에요!</p>
+        <div class="field">
+          <label>한 끼 예산</label>
+          <div class="slider-row">
+            <input type="range" id="budget" min="6000" max="16000" step="1000" value="10000" />
+            <span class="slider-val" id="budgetVal"></span>
+          </div>
+        </div>
+        <div class="field">
+          <label>메뉴 결정 스타일</label>
+          <div class="seg" id="amountSeg">
+            <div class="chip" data-amount="0">✋ 내가 정할게</div>
+            <div class="chip on" data-amount="1">🤝 같이 정하자</div>
+            <div class="chip" data-amount="2">😌 아무거나 OK</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>닉네임</label>
+          <input type="text" id="nick" placeholder="예) 점심요정" maxlength="12" />
+        </div>
+        <div class="field">
+          <label>🔴 라이브 룸 코드 <span class="desc">같은 코드끼리 실시간 매칭</span></label>
+          <input type="text" id="room" placeholder="예) CS21" value="lunch" maxlength="16" />
+        </div>
       </div>
 
-      <div class="vote">
-        <p><b>이 매칭, 마음에 들어요?</b><br/>마음에 들면 하트를 눌러주세요 💕</p>
-        <button class="heart-btn" id="heartBtn">🤍 좋아요 <span id="likeCount">0</span></button>
+      <div class="step-nav">
+        <button class="btn ghost" id="wizPrev" style="display:none">이전</button>
+        <button class="btn" id="wizNext">다음</button>
+        <button class="btn" id="submitBtn" style="display:none">🔍 내 밥메이트 찾기</button>
       </div>
+      <p class="err" id="err">⚠️ 닉네임을 입력하고 음식을 1개 이상 골라주세요!</p>
+    </section>
 
-      <button class="btn ghost" id="retryBtn">↩️ 다시 해보기</button>
-      <button class="btn ghost" id="logoutBtn" style="margin-top:10px;color:var(--muted);border-color:var(--line)">🚪 로그아웃</button>
+    <!-- ============ 결과 (좌측 탭 + 패널) ============ -->
+    <section id="result">
+      <div class="result-shell">
+        <aside class="result-nav">
+          <div class="rn-head">내 결과</div>
+          <button class="rn-item active" data-panel="p-type"><span class="rn-dot"></span>내 밥BTI</button>
+          <button class="rn-item" data-panel="p-mates"><span class="rn-dot"></span>밥메이트</button>
+          <button class="rn-item" data-panel="p-menu"><span class="rn-dot"></span>추천 메뉴</button>
+          <button class="rn-item" data-panel="p-live"><span class="rn-dot"></span>라이브 룸</button>
+          <button class="rn-item" data-panel="p-stats"><span class="rn-dot"></span>취향 통계</button>
+        </aside>
+
+        <div class="result-main">
+          <!-- 내 밥BTI -->
+          <div class="panel active" id="p-type">
+            <div class="type-card" id="typeCard">
+              <div class="emoji" id="typeEmoji">🍲</div>
+              <div class="tname" id="typeName">밸런스 미식가</div>
+              <div class="tdesc" id="typeDesc"></div>
+              <div class="tnick" id="typeNick"></div>
+              <button class="share-result-btn" id="shareResultBtn" onclick="shareResult()">🔗 내 밥BTI 공유하기</button>
+            </div>
+          </div>
+
+          <!-- 밥메이트 -->
+          <div class="panel" id="p-mates">
+            <div class="sect-title">🤝 나랑 잘 맞는 밥메이트 <span class="sync-badge" id="syncBadge"><span class="sync-spin">🔄</span><span id="syncText"></span></span></div>
+            <div id="mates"></div>
+            <div id="aiSection" style="display:none;margin-top:16px">
+              <div class="sect-title" style="margin-top:0">🤖 AI 매칭 코멘트</div>
+              <div class="card" style="margin-top:0;padding:18px 20px">
+                <p id="aiStatus" style="color:var(--primary-d);font-weight:700;font-size:14px">✨ Claude AI가 코멘트를 생성하는 중...</p>
+                <p id="aiComment" style="line-height:1.75;font-size:15px;display:none"></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 추천 메뉴 -->
+          <div class="panel" id="p-menu">
+            <div class="sect-title">🍴 우리 그룹 추천 메뉴</div>
+            <p class="hint" id="restoHint" style="margin:0 0 12px">메뉴를 누르면 📍 현재 위치 주변에서 그 메뉴를 파는 <b>실제 식당</b>을 찾아드려요!</p>
+            <div id="restos"></div>
+          </div>
+
+          <!-- 라이브 룸 -->
+          <div class="panel" id="p-live">
+            <div class="sect-title">🔴 라이브 룸 — 실시간 전체 매칭</div>
+            <div class="card" style="margin-top:0">
+              <p class="hint" id="liveStatus" style="font-weight:700;color:var(--ink)">실시간 룸에 연결 중…</p>
+              <div id="liveGroups"></div>
+              <button class="heart-btn" id="resetRoomBtn" style="margin-top:14px;font-size:13px;padding:8px 16px;display:none">🗑️ 룸 비우기</button>
+
+              <!-- 룸 채팅 -->
+              <div id="chatWrap" style="display:none;margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
+                <p style="font-weight:800;font-size:14px;margin-bottom:8px;color:var(--ink)">💬 룸 채팅</p>
+                <div id="chatMsgs"></div>
+                <div style="display:flex;gap:8px;margin-top:8px">
+                  <input type="text" id="chatInput" placeholder="메시지를 입력하세요..." maxlength="100" />
+                  <button id="chatSendBtn">전송</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 취향 통계 -->
+          <div class="panel" id="p-stats">
+            <div class="sect-title">📊 우리 반 취향 통계</div>
+            <div class="card" style="margin-top:0">
+              <p class="hint" style="margin-bottom:14px;font-weight:700;color:var(--ink)">🌶️ 매운맛 분포</p>
+              <div id="spicyStats"></div>
+              <p class="hint" style="margin:18px 0 14px;font-weight:700;color:var(--ink)">🧂 짠맛 분포</p>
+              <div id="saltyStats"></div>
+              <p class="hint" style="margin:18px 0 14px;font-weight:700;color:var(--ink)">🍬 단맛 분포</p>
+              <div id="sweetStats"></div>
+              <p class="hint" style="margin:18px 0 14px;font-weight:700;color:var(--ink)">🌿 향신료 선호</p>
+              <div id="herbStats"></div>
+              <p class="hint" style="margin:18px 0 14px;font-weight:700;color:var(--ink)">🍽️ 인기 음식 TOP</p>
+              <div id="catStats"></div>
+            </div>
+          </div>
+
+          <!-- 공통: 투표 + 다시하기 + 로그아웃 (항상 표시) -->
+          <div class="vote">
+            <p><b>이 매칭, 마음에 들어요?</b><br/>마음에 들면 하트를 눌러주세요 💕</p>
+            <button class="heart-btn" id="heartBtn">🤍 좋아요 <span id="likeCount">0</span></button>
+          </div>
+          <button class="btn ghost" id="retryBtn">↩️ 다시 해보기</button>
+          <button class="btn ghost" id="logoutBtn" style="margin-top:10px;color:var(--muted);border-color:var(--line)">🚪 로그아웃</button>
+        </div>
+      </div>
     </section>
 
     </div><!-- /mainContent -->
@@ -782,24 +891,26 @@ ${matesDesc}
 
 /* ============== UI 로직 ============== */
 let selectedDishes = new Set();   // 선택한 세부 음식 이름
+let selectedCatsManual = new Set(); // 분류 칩에서 직접 선택한 카테고리
 let selectedCats = new Set();     // 매핑된 카테고리 (매칭/통계/추천에 사용)
 let openCat = null;               // 현재 펼친 분류
 let amount = 1;
+window.__bobSelectedCount = () => selectedCats.size;   // 스텝 위저드 1단계 음식 검증용
 
-// 선택한 세부 음식 → 카테고리 집합 재계산
+// 직접 선택한 분류 + 세부 음식에서 파생된 분류 합산
 function recomputeCats() {
-  selectedCats = new Set();
+  selectedCats = new Set([...selectedCatsManual]);
   DISHES.forEach(d => { if (selectedDishes.has(d.name)) selectedCats.add(d.cat); });
 }
 
 const catChips = document.getElementById("catChips");
 const dishPanel = document.getElementById("dishPanel");
 
-// 분류 칩: 펼쳐져 있거나(open) 선택된 메뉴가 있으면 강조
+// 분류 칩: 직접 선택됐거나, 세부 음식이 선택됐거나, 펼쳐져 있으면 강조
 function refreshCatChips() {
   catChips.querySelectorAll(".chip").forEach(el => {
     const cat = el.dataset.cat;
-    const hasSel = DISHES.some(d => d.cat === cat && selectedDishes.has(d.name));
+    const hasSel = selectedCatsManual.has(cat) || DISHES.some(d => d.cat === cat && selectedDishes.has(d.name));
     el.classList.toggle("on", cat === openCat || hasSel);
   });
 }
@@ -830,7 +941,17 @@ CATS.forEach(cat => {
   el.textContent = cat;
   el.dataset.cat = cat;
   el.onclick = () => {
-    openCat = (openCat === cat) ? null : cat;  // 같은 분류 다시 누르면 닫힘
+    if (openCat === cat) {
+      // 같은 분류 다시 누르면 닫힘 + 세부 음식 없으면 선택 취소
+      openCat = null;
+      if (!DISHES.some(d => d.cat === cat && selectedDishes.has(d.name))) {
+        selectedCatsManual.delete(cat);
+      }
+    } else {
+      openCat = cat;
+      selectedCatsManual.add(cat);  // 분류 클릭만으로도 선택
+    }
+    recomputeCats();
     renderDishPanel();
     refreshCatChips();
   };
@@ -998,11 +1119,9 @@ function saveUserPrefs(me) {
 function fillFormFromData(data) {
   const cats = Array.isArray(data.cats) ? data.cats : Object.values(data.cats || {});
   const dishes = Array.isArray(data.dishes) ? data.dishes : Object.values(data.dishes || {});
+  cats.forEach(cat => selectedCatsManual.add(cat));  // 저장된 분류 복원
   if (dishes.length) {
     dishes.forEach(name => selectedDishes.add(name));
-  } else {
-    // 구버전(카테고리만 저장됨) → 각 카테고리의 첫 대표 음식 선택
-    cats.forEach(cat => { const f = DISHES.find(d => d.cat === cat); if (f) selectedDishes.add(f.name); });
   }
   recomputeCats();
   refreshCatChips();
@@ -1626,14 +1745,21 @@ function joinRoom(me) {
   // 채팅 시작
   startChat(code, me.nick);
 
-  // 재시연용 룸 비우기
-  if (resetBtn) {
-    resetBtn.style.display = "inline-block";
-    resetBtn.onclick = () => {
-      if (confirm("이 룸(" + roomCode() + ")의 참여자 데이터를 모두 지울까요?"))
-        db.ref("rooms/" + roomCode() + "/members").remove();
-    };
-  }
+  // 룸 생성자(host) 등록 — 처음 들어온 사람만 host가 됨
+  const hostRef = db.ref("rooms/" + code + "/host");
+  hostRef.transaction(current => current === null ? me.nick : current, (err, committed, snap) => {
+    if (err || !snap) return;
+    const host = snap.val();
+    if (resetBtn && host === me.nick) {
+      resetBtn.style.display = "inline-block";
+      resetBtn.onclick = () => {
+        if (confirm("이 룸(" + code + ")의 참여자 데이터를 모두 지울까요?")) {
+          db.ref("rooms/" + code + "/members").remove();
+          db.ref("rooms/" + code + "/host").remove();
+        }
+      };
+    }
+  });
 }
 
 function shareResult() {
@@ -1642,7 +1768,6 @@ function shareResult() {
   const url   = "http://kmu-agent-46-babbti-s3.s3-website-us-east-1.amazonaws.com";
   const text  = `나는 ${emoji} ${type}!\n오늘 점심 누구랑 뭐 먹을지 취향으로 맞춰봐요 🍚\n👉 밥BTI 해보기: ${url}`;
   const btn   = document.getElementById("shareResultBtn");
-
   if (navigator.share) {
     navigator.share({ title: "밥BTI 결과", text, url }).catch(() => {});
   } else {
@@ -1653,6 +1778,15 @@ function shareResult() {
       })
       .catch(() => prompt("복사해서 공유하세요:", text));
   }
+}
+
+function copyRoomCode(code) {
+  navigator.clipboard.writeText(code)
+    .then(() => {
+      const btn = document.querySelector(".copy-code-btn");
+      if (btn) { btn.textContent = "✅ 복사됨!"; setTimeout(() => btn.textContent = "📋 코드 복사", 2000); }
+    })
+    .catch(() => prompt("룸 코드를 복사하세요:", code));
 }
 
 function renderLive(members, code) {
@@ -1770,6 +1904,66 @@ function initRoomList() {
     document.getElementById("loginPw").value = "";
     document.getElementById("loginNick").focus();
   };
+})();
+</script>
+<script>
+/* ===== 이식: 결과 좌측 탭 네비게이션 ===== */
+(function(){
+  const items = [...document.querySelectorAll('.rn-item')];
+  const panels = [...document.querySelectorAll('#result .panel')];
+  if (!items.length) return;
+  function show(id){
+    items.forEach(b => b.classList.toggle('active', b.dataset.panel === id));
+    panels.forEach(p => p.classList.toggle('active', p.id === id));
+    const r = document.getElementById('result');
+    if (r && r.style.display !== 'none') {
+      const top = r.getBoundingClientRect().top + window.scrollY - 12;
+      window.scrollTo({ top, behavior: 'smooth' });
+    }
+  }
+  items.forEach(b => b.addEventListener('click', () => show(b.dataset.panel)));
+})();
+
+/* ===== 이식: 입력 스텝 위저드 ===== */
+(function(){
+  const form = document.getElementById('form');
+  if (!form) return;
+  const steps = [...form.querySelectorAll('.step')];
+  const sts   = [...document.querySelectorAll('#stepper .st')];
+  const lines = [...document.querySelectorAll('#stepper .st-line')];
+  const prev  = document.getElementById('wizPrev');
+  const next  = document.getElementById('wizNext');
+  const submit= document.getElementById('submitBtn');
+  const err   = document.getElementById('err');
+  if (!steps.length || !prev || !next || !submit) return;
+  let cur = 1;
+  function render(){
+    steps.forEach(s => s.classList.toggle('active', +s.dataset.step === cur));
+    sts.forEach(s => { const i = +s.dataset.i; s.classList.toggle('active', i === cur); s.classList.toggle('done', i < cur); });
+    lines.forEach((l, idx) => l.classList.toggle('filled', idx < cur - 1));
+    prev.style.display = cur > 1 ? '' : 'none';
+    const last = cur === steps.length;
+    next.style.display = last ? 'none' : '';
+    submit.style.display = last ? '' : 'none';
+    if (err) err.style.display = 'none';
+  }
+  function go(n){
+    cur = Math.max(1, Math.min(steps.length, n));
+    render();
+    const y = form.getBoundingClientRect().top + window.scrollY - 14;
+    window.scrollTo({ top: y, behavior: 'smooth' });
+  }
+  next.addEventListener('click', () => {
+    if (cur === 1) {
+      const cnt = (typeof window.__bobSelectedCount === 'function') ? window.__bobSelectedCount() : 1;
+      if (cnt === 0) { if (err) { err.textContent = '⚠️ 음식을 1개 이상 골라주세요!'; err.style.display = 'block'; } return; }
+    }
+    go(cur + 1);
+  });
+  prev.addEventListener('click', () => go(cur - 1));
+  const retry = document.getElementById('retryBtn');
+  if (retry) retry.addEventListener('click', () => { cur = 1; render(); });
+  render();
 })();
 </script>
 </body>
