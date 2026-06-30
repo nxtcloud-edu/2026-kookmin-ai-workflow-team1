@@ -523,6 +523,7 @@
       </div>
 
       <button class="btn ghost" id="retryBtn">↩️ 다시 해보기</button>
+      <button class="btn ghost" id="logoutBtn" style="margin-top:10px;color:var(--muted);border-color:var(--line)">🚪 로그아웃</button>
     </section>
 
     </div><!-- /mainContent -->
@@ -1719,6 +1720,19 @@ function initRoomList() {
 
   document.getElementById("switchAccountBtn").onclick = () => {
     localStorage.removeItem("babbtiSession");
+    document.getElementById("returnPrompt").style.display = "none";
+    document.getElementById("loginFormBody").style.display = "block";
+    document.getElementById("loginNick").value = "";
+    document.getElementById("loginPw").value = "";
+    document.getElementById("loginNick").focus();
+  };
+
+  document.getElementById("logoutBtn").onclick = () => {
+    currentUser = null;
+    localStorage.removeItem("babbtiSession");
+    document.getElementById("mainContent").style.display = "none";
+    document.getElementById("result").style.display = "none";
+    document.getElementById("landing").style.display = "block";
     document.getElementById("returnPrompt").style.display = "none";
     document.getElementById("loginFormBody").style.display = "block";
     document.getElementById("loginNick").value = "";
