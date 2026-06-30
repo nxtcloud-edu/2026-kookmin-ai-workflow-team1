@@ -54,6 +54,22 @@
   .hero-deco span:nth-child(4) { font-size:42px; top:60%; right:4%; transform:rotate(-10deg); }
   .hero-deco span:nth-child(5) { font-size:34px; bottom:6%; left:50%; transform:translateX(-50%) rotate(6deg); }
 
+  .live-count {
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:13px; font-weight:700; color:var(--muted);
+    background:rgba(255,255,255,.55); border:1px solid var(--line);
+    border-radius:999px; padding:5px 14px; margin-top:18px;
+    backdrop-filter:blur(4px);
+  }
+  .live-count .dot {
+    width:7px; height:7px; border-radius:50%; background:#22c55e;
+    animation:pulse-dot 1.6s ease-in-out infinite; flex-shrink:0;
+  }
+  @keyframes pulse-dot {
+    0%,100% { opacity:1; transform:scale(1); }
+    50%      { opacity:.5; transform:scale(.75); }
+  }
+
   .badge {
     display:inline-flex; align-items:center; gap:7px;
     font-size:12px; font-weight:700; letter-spacing:.2px;
@@ -475,6 +491,10 @@
     <h1>오늘 점심,<br/><span class="grad">누구랑 뭐 먹지?</span></h1>
     <p>음식 취향 30초만 입력하면<br/>딱 맞는 <b>밥메이트</b>와 <b>식당</b>을 찾아줘요.</p>
     <p class="sub">국민대 AI 부트캠프 · 실시간 취향 매칭</p>
+    <div class="live-count" id="liveCountBadge" style="display:none">
+      <span class="dot"></span>
+      <span id="liveCountText">지금 0명이 매칭 중</span>
+    </div>
   </header>
 
   <main class="wrap">
@@ -737,6 +757,18 @@
       FIREBASE_ON = true;
     }
   } catch (e) { console.warn("Firebase 초기화 실패:", e); }
+
+  if (FIREBASE_ON) {
+    db.ref("participants").on("value", snap => {
+      const count = snap.numChildren();
+      const badge = document.getElementById("liveCountBadge");
+      const text  = document.getElementById("liveCountText");
+      if (count > 0) {
+        text.textContent = `지금 ${count}명이 매칭 중`;
+        badge.style.display = "inline-flex";
+      }
+    });
+  }
 </script>
 
 <script>
