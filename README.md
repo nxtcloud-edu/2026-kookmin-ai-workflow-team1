@@ -14,6 +14,7 @@ index.html
  ├── 밥BTI 타입 결과
  ├── 밥메이트 TOP 3  (유사도 알고리즘)
  ├── 추천 식당 TOP 3  (그룹 취향 합산)
+ │     └── 📍 내 주변 실제 식당 찾기  ← GPS + OpenStreetMap 으로 실제 식당 검색
  ├── 🔴 라이브 룸     ← Firebase 연결 시 실시간 활성화
  └── 📊 취향 통계
 ```
@@ -44,6 +45,16 @@ similarity(a, b) =
   + (1 - |budget_a - budget_b| / 10000) × 0.18
   + (결정스타일 보완) × 0.12
 ```
+
+## 📍 내 주변 실제 식당 찾기 (GPS 기반)
+
+결과 화면의 **"📍 내 주변 실제 식당 찾기"** 버튼을 누르면, 가상 큐레이션 대신
+**현재 GPS 위치 주변의 진짜 식당**을 검색해서 우리 그룹 취향으로 추천해 줍니다.
+
+- **데이터 소스**: [OpenStreetMap Overpass API](https://overpass-api.de) — **API 키 불필요**, 별도 가입/설정 없이 바로 동작
+- **흐름**: `navigator.geolocation`으로 현재 좌표 → Overpass로 반경 800m 내 음식점(`restaurant`/`fast_food`/`cafe`) 검색 → OSM `cuisine` 태그를 밥BTI 9개 카테고리로 매핑 → **그룹 취향 점수(0.45) + 거리 점수(0.45) + 기본(0.10)** 으로 랭킹 → TOP 4 카드(거리 + 카카오맵 링크) 표시
+- **폴백**: 위치 권한 거부 / 검색 실패 / 주변 데이터 없음 → 기존 가상 큐레이션 추천을 그대로 유지 (안 깨짐)
+- ⚠️ GPS는 **HTTPS 환경**에서만 동작합니다. GitHub Pages·S3(https)·VS Code Live Server(localhost)는 OK, `file://` 직접 열기는 막힐 수 있어요.
 
 ## 팀 역할
 
