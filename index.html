@@ -1875,8 +1875,9 @@ function joinRoom(me) {
   if (roomRef) roomRef.off();
   roomRef = db.ref("rooms/" + code + "/members");
 
-  // 내 입력 등록 + 브라우저 종료 시 자동 삭제 (onDisconnect)
-  const myRef = roomRef.push({
+  // 닉네임을 key로 써서 set() → 재입장해도 같은 경로 덮어씀 (push면 매번 새 항목 생김)
+  const myRef = roomRef.child(encodeURIComponent(me.nick));
+  myRef.set({
     nick: me.nick, cats: me.cats,
     spicy: me.spicy, salty: me.salty, sweet: me.sweet, herb: me.herb,
     budget: me.budget, amount: me.amount, ts: Date.now()
