@@ -152,6 +152,14 @@
   .type-card .tname { font-size:30px; font-weight:800; margin-top:14px; letter-spacing:-1px; color:#fff; position:relative; }
   .type-card .tdesc { font-size:14px; color:rgba(255,255,255,.7); margin-top:10px; line-height:1.7; position:relative; }
   .type-card .tnick { font-size:12px; color:rgba(255,255,255,.45); margin-top:16px; font-weight:600; position:relative; letter-spacing:.3px; }
+  .share-result-btn {
+    margin-top:16px; width:100%; background:rgba(255,255,255,.15);
+    color:#fff; border:1.5px solid rgba(255,255,255,.45); border-radius:999px;
+    padding:9px 0; font-size:13px; font-weight:700; cursor:pointer;
+    font-family:inherit; transition:background .15s; position:relative;
+  }
+  .share-result-btn:hover { background:rgba(255,255,255,.28); }
+  .share-result-btn:active { opacity:.8; }
 
   .sect-title { font-size:16px; font-weight:800; margin:40px 0 14px; display:flex; align-items:center; gap:8px; letter-spacing:-.3px; }
 
@@ -564,6 +572,7 @@
               <div class="tname" id="typeName">밸런스 미식가</div>
               <div class="tdesc" id="typeDesc"></div>
               <div class="tnick" id="typeNick"></div>
+              <button class="share-result-btn" id="shareResultBtn" onclick="shareResult()">🔗 내 밥BTI 공유하기</button>
             </div>
           </div>
 
@@ -1751,6 +1760,24 @@ function joinRoom(me) {
       };
     }
   });
+}
+
+function shareResult() {
+  const type  = document.getElementById("typeName").textContent;
+  const emoji = document.getElementById("typeEmoji").textContent;
+  const url   = "http://kmu-agent-46-babbti-s3.s3-website-us-east-1.amazonaws.com";
+  const text  = `나는 ${emoji} ${type}!\n오늘 점심 누구랑 뭐 먹을지 취향으로 맞춰봐요 🍚\n👉 밥BTI 해보기: ${url}`;
+  const btn   = document.getElementById("shareResultBtn");
+  if (navigator.share) {
+    navigator.share({ title: "밥BTI 결과", text, url }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        btn.textContent = "✅ 복사됐어요! 친구한테 보내줘요";
+        setTimeout(() => btn.textContent = "🔗 내 밥BTI 공유하기", 2500);
+      })
+      .catch(() => prompt("복사해서 공유하세요:", text));
+  }
 }
 
 function copyRoomCode(code) {
