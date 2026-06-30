@@ -1430,7 +1430,8 @@ function renderRestos(me, matePeople) {
 
 function saveParticipant(me) {
   if (!FIREBASE_ON) return;
-  db.ref("participants").push({
+  // 닉네임 key로 set() → 재제출해도 덮어씀, 카운터 중복 방지
+  db.ref("participants").child(encodeURIComponent(me.nick)).set({
     nick: me.nick, cats: me.cats,
     spicy: me.spicy, salty: me.salty, sweet: me.sweet, herb: me.herb,
     budget: me.budget, amount: me.amount
