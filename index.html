@@ -10,18 +10,18 @@
   href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
 <style>
   :root {
-    --bg:        #faf7f4;
+    --bg:        #f8f4f0;
     --card:      #ffffff;
-    --ink:       #1e1917;
-    --muted:     #8a7d74;
-    --line:      #ede8e3;
-    --primary:   #ff5a3c;
-    --primary-d: #d94020;
+    --card-soft: #f2ede8;
+    --ink:       #1a1714;
+    --muted:     #7c6f67;
+    --line:      #e8e2db;
+    --primary:   #ff5533;
+    --primary-d: #d43a1e;
     --accent:    #ffaa2e;
     --good:      #1db069;
-    --shadow:    0 1px 3px rgba(0,0,0,.05),0 10px 32px rgba(0,0,0,.09);
-    --shadow-sm: 0 1px 2px rgba(0,0,0,.04),0 3px 12px rgba(0,0,0,.06);
-    --radius:    18px;
+    --shadow-lift: 0 2px 8px rgba(0,0,0,.07),0 12px 40px rgba(0,0,0,.11);
+    --radius:    16px;
   }
   * { box-sizing:border-box; margin:0; padding:0; }
   html { scroll-behavior:smooth; }
@@ -30,69 +30,89 @@
     background:var(--bg); color:var(--ink); line-height:1.55;
     -webkit-font-smoothing:antialiased;
   }
-  .wrap { max-width:680px; margin:0 auto; padding:0 18px 80px; }
+  .wrap { max-width:680px; margin:0 auto; padding:0 18px 96px; }
 
   /* ── Hero ── */
   .hero {
-    text-align:center; padding:68px 24px 52px;
+    text-align:center; padding:76px 24px 60px;
     background:
-      radial-gradient(ellipse 90% 70% at 15% 0%,  rgba(255,170,46,.20) 0%, transparent 58%),
-      radial-gradient(ellipse 80% 60% at 85% 5%,  rgba(255,90,60,.16) 0%,  transparent 55%),
-      radial-gradient(ellipse 110% 90% at 50% -10%,rgba(255,215,170,.28) 0%,transparent 65%),
+      radial-gradient(ellipse 80% 65% at 18% 0%,   rgba(255,165,40,.24) 0%, transparent 55%),
+      radial-gradient(ellipse 70% 55% at 82% 0%,   rgba(255,85,51,.18) 0%,  transparent 52%),
+      radial-gradient(ellipse 100% 85% at 50% -8%,  rgba(255,210,160,.32) 0%,transparent 62%),
       var(--bg);
+    position:relative; overflow:hidden;
   }
+  /* 히어로 음식 이모지 장식 */
+  .hero-deco { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+  .hero-deco span {
+    position:absolute; line-height:1; user-select:none;
+    opacity:.11; filter:saturate(0.7);
+  }
+  .hero-deco span:nth-child(1) { font-size:54px; top:10%; left:5%;  transform:rotate(-18deg); }
+  .hero-deco span:nth-child(2) { font-size:40px; top:58%; left:3%;  transform:rotate(12deg); }
+  .hero-deco span:nth-child(3) { font-size:48px; top:14%; right:6%; transform:rotate(22deg); }
+  .hero-deco span:nth-child(4) { font-size:42px; top:60%; right:4%; transform:rotate(-10deg); }
+  .hero-deco span:nth-child(5) { font-size:34px; bottom:6%; left:50%; transform:translateX(-50%) rotate(6deg); }
+
   .badge {
-    display:inline-flex; align-items:center; gap:5px;
-    font-size:11.5px; font-weight:700; letter-spacing:.5px; text-transform:uppercase;
-    color:var(--primary-d); background:#ffe8e2; padding:6px 16px; border-radius:999px; margin-bottom:22px;
+    display:inline-flex; align-items:center; gap:7px;
+    font-size:12px; font-weight:700; letter-spacing:.2px;
+    color:var(--primary-d); margin-bottom:26px;
   }
-  .hero h1 { font-size:54px; font-weight:800; letter-spacing:-2px; line-height:1.1; }
+  .badge::before {
+    content:''; width:6px; height:6px; border-radius:50%;
+    background:var(--primary); flex-shrink:0;
+  }
+  .hero h1 { font-size:64px; font-weight:900; letter-spacing:-3.5px; line-height:1.04; position:relative; }
   .hero h1 .grad {
     background:linear-gradient(110deg,var(--primary) 10%,var(--accent) 100%);
     -webkit-background-clip:text; background-clip:text; color:transparent;
   }
-  .hero p { color:var(--muted); margin-top:18px; font-size:16px; line-height:1.7; }
-  .hero .sub { margin-top:8px; font-size:13px; color:#c0b5ad; letter-spacing:.2px; }
+  .hero p { color:var(--muted); margin-top:22px; font-size:16px; line-height:1.75; position:relative; }
+  .hero .sub { margin-top:6px; font-size:12px; color:#c0aea6; letter-spacing:.2px; }
 
   /* ── Card ── */
   .card {
     background:var(--card); border:1px solid var(--line);
-    border-radius:var(--radius); padding:26px; margin-top:20px;
-    box-shadow:var(--shadow-sm);
+    border-radius:var(--radius); padding:26px; margin-top:28px;
   }
-  .card h2 { font-size:17px; font-weight:800; display:flex; align-items:center; gap:8px; }
+  .card h2 { font-size:18px; font-weight:800; display:flex; align-items:center; gap:8px; }
   .card .hint { color:var(--muted); font-size:13.5px; margin-top:5px; line-height:1.65; }
 
+  /* 랜딩 카드만 elevation */
+  #landing { box-shadow:var(--shadow-lift); margin-top:24px; }
+
   .field { margin-top:22px; }
-  .field > label { font-weight:700; font-size:14.5px; display:block; margin-bottom:10px; }
+  .field > label { font-weight:700; font-size:14px; display:block; margin-bottom:8px; }
   .field .desc { font-weight:400; color:var(--muted); font-size:12.5px; margin-left:6px; }
 
+  /* Uber-style soft-fill input — 테두리 없음, 연한 배경 */
   input[type="text"], input[type="password"] {
-    width:100%; padding:13px 16px; border:1.5px solid var(--line); border-radius:12px;
-    font-size:15px; font-family:inherit; background:#fffdfb; color:var(--ink);
-    transition:border-color .15s, box-shadow .15s;
+    width:100%; padding:14px 16px; border:none; border-radius:12px;
+    font-size:15px; font-family:inherit; background:#ede8e2; color:var(--ink);
+    transition:background .15s, box-shadow .15s;
   }
   input[type="text"]:focus, input[type="password"]:focus {
-    outline:none; border-color:var(--primary);
-    box-shadow:0 0 0 3px rgba(255,90,60,.10);
+    outline:none; background:#fff;
+    box-shadow:0 0 0 2px var(--primary);
   }
 
   /* chips */
   .chips { display:flex; flex-wrap:wrap; gap:8px; }
   .chip {
-    border:1.5px solid var(--line); background:#fffdfb; color:var(--ink);
+    border:none; background:#ede8e2; color:var(--ink);
     padding:9px 16px; border-radius:999px; font-size:13.5px; font-weight:600;
     cursor:pointer; user-select:none; transition:all .12s;
   }
-  .chip:hover { border-color:var(--primary); color:var(--primary); }
-  .chip.on { background:var(--primary); border-color:var(--primary); color:#fff; box-shadow:0 2px 8px rgba(255,90,60,.25); }
+  .chip:hover { background:#e3dcd6; }
+  .chip.on { background:var(--primary); color:#fff; box-shadow:0 2px 8px rgba(255,85,51,.28); }
 
   /* slider */
   .slider-row { display:flex; align-items:center; gap:14px; }
   input[type="range"] { flex:1; accent-color:var(--primary); height:5px; }
   .slider-val {
     min-width:90px; text-align:center; font-weight:700; font-size:13.5px;
-    background:#fff3ef; color:var(--primary-d); padding:8px 10px; border-radius:10px;
+    background:#ede8e2; color:var(--ink); padding:8px 10px; border-radius:10px;
   }
 
   /* segmented */
@@ -104,15 +124,15 @@
     width:100%; margin-top:24px; padding:17px 24px; border:none; border-radius:999px;
     background:var(--primary); color:#fff;
     font-size:16px; font-weight:800; font-family:inherit; cursor:pointer; letter-spacing:-.1px;
-    box-shadow:0 4px 16px rgba(255,90,60,.32); transition:transform .08s, box-shadow .08s, background .1s;
+    transition:transform .08s, background .1s;
   }
-  .btn:hover { background:var(--primary-d); box-shadow:0 6px 22px rgba(255,90,60,.40); }
-  .btn:active { transform:scale(.985); box-shadow:0 2px 8px rgba(255,90,60,.22); }
+  .btn:hover { background:var(--primary-d); }
+  .btn:active { transform:scale(.985); }
   .btn.ghost {
-    background:#fff; color:var(--ink); border:1.5px solid var(--line);
-    box-shadow:none; margin-top:12px; font-weight:700;
+    background:var(--bg); color:var(--ink); border:1.5px solid var(--line);
+    margin-top:12px; font-weight:700;
   }
-  .btn.ghost:hover { border-color:var(--muted); background:var(--bg); }
+  .btn.ghost:hover { border-color:var(--muted); }
   .err { color:var(--primary-d); font-size:13px; font-weight:600; margin-top:10px; display:none; }
 
   /* ── Result ── */
@@ -133,15 +153,15 @@
   .type-card .tdesc { font-size:14px; color:rgba(255,255,255,.7); margin-top:10px; line-height:1.7; position:relative; }
   .type-card .tnick { font-size:12px; color:rgba(255,255,255,.45); margin-top:16px; font-weight:600; position:relative; letter-spacing:.3px; }
 
-  .sect-title { font-size:15px; font-weight:800; margin:28px 0 12px; display:flex; align-items:center; gap:8px; }
+  .sect-title { font-size:16px; font-weight:800; margin:40px 0 14px; display:flex; align-items:center; gap:8px; letter-spacing:-.3px; }
 
-  /* mate cards */
+  /* mate cards — Pinterest flat style */
   .mate {
     display:flex; align-items:center; gap:14px; padding:16px;
     border:1px solid var(--line); border-radius:14px; margin-bottom:10px; background:#fff;
-    box-shadow:var(--shadow-sm); transition:transform .12s, box-shadow .12s;
+    transition:transform .12s, border-color .12s;
   }
-  .mate:hover { transform:translateY(-2px); box-shadow:var(--shadow); }
+  .mate:hover { transform:translateY(-2px); border-color:#d4cdc6; }
   .mate .av {
     width:48px; height:48px; border-radius:50%; flex-shrink:0;
     display:grid; place-items:center; font-size:24px;
@@ -157,10 +177,10 @@
   .mate .pct .n { font-size:22px; font-weight:800; color:var(--primary-d); }
   .mate .pct .l { font-size:10.5px; color:var(--muted); }
 
-  /* restaurant cards */
+  /* restaurant cards — flat */
   .resto {
     padding:18px; border:1px solid var(--line); border-radius:14px; margin-bottom:10px;
-    background:#fff; box-shadow:var(--shadow-sm);
+    background:#fff;
   }
   .resto .top { display:flex; align-items:center; gap:12px; }
   .resto .top .rico { font-size:28px; }
@@ -204,20 +224,21 @@
   }
   .bar-row .cnt { width:28px; text-align:right; color:var(--muted); font-weight:700; }
 
+  /* vote 섹션 — Uber promo-card-on-dark 스타일 */
   .vote {
-    text-align:center; margin-top:28px; padding:26px;
-    background:linear-gradient(135deg,#fff8f4,#fff3ef);
-    border:1px solid #fde8e2; border-radius:var(--radius);
+    text-align:center; margin-top:40px; padding:32px 26px;
+    background:var(--ink); border-radius:var(--radius);
   }
-  .vote p { font-size:14px; color:#7a6d64; line-height:1.7; }
+  .vote p { font-size:15px; color:rgba(255,255,255,.7); line-height:1.75; }
+  .vote p b { color:#fff; }
   .heart-btn {
-    margin-top:14px; font-size:15px; font-weight:800; cursor:pointer;
-    background:#fff; color:var(--primary-d); border:1.5px solid #ffd2c6;
-    padding:12px 28px; border-radius:999px; font-family:inherit; transition:all .12s;
+    margin-top:18px; font-size:15px; font-weight:800; cursor:pointer;
+    background:var(--primary); color:#fff; border:none;
+    padding:14px 32px; border-radius:999px; font-family:inherit; transition:all .12s;
   }
-  .heart-btn:hover { background:#fff3ef; }
+  .heart-btn:hover { background:var(--primary-d); }
   .heart-btn:active { transform:scale(.95); }
-  .heart-btn.liked { background:var(--primary); color:#fff; border-color:var(--primary); }
+  .heart-btn.liked { background:#fff; color:var(--primary-d); }
 
   footer { text-align:center; color:#c4b8af; font-size:12px; margin-top:44px; letter-spacing:.3px; }
 
@@ -234,11 +255,33 @@
   .sync-spin { display:none; }
   .sync-badge.syncing .sync-spin { display:inline-block; animation:spin .7s linear infinite; }
 
-  /* 재방문 배너 */
+  /* 재방문 Prompt — 다크 welcome-back 카드 (Uber promo-card-on-dark 스타일) */
+  #returnPrompt {
+    background:var(--ink); border-radius:var(--radius);
+    padding:22px 20px; margin-top:20px;
+  }
+  #returnPrompt .ret-emoji { font-size:28px; margin-bottom:10px; }
+  #returnPrompt .ret-title { font-weight:800; font-size:17px; color:#fff; }
+  #returnPrompt .ret-sub { color:rgba(255,255,255,.55); font-size:13px; margin-top:4px; }
+  #returnPrompt .ret-actions { display:flex; gap:10px; margin-top:16px; }
+  .ret-primary-btn {
+    flex:1; padding:13px; border:none; border-radius:999px;
+    background:var(--primary); color:#fff; font-weight:800; font-size:14px;
+    font-family:inherit; cursor:pointer; transition:background .1s;
+  }
+  .ret-primary-btn:hover { background:var(--primary-d); }
+  .ret-ghost-btn {
+    flex:1; padding:13px; border:1.5px solid rgba(255,255,255,.22); border-radius:999px;
+    background:transparent; color:rgba(255,255,255,.75); font-weight:700; font-size:14px;
+    font-family:inherit; cursor:pointer; transition:border-color .1s;
+  }
+  .ret-ghost-btn:hover { border-color:rgba(255,255,255,.45); }
+
+  /* 재방문 배너 (localStorage 자동로그인 후 나타나는 배너) */
   .return-banner {
     display:flex; align-items:center; gap:14px;
-    background:#edf8f3; border:1.5px solid #c3e8d4;
-    border-radius:14px; padding:16px; margin-top:18px;
+    background:var(--ink); color:#fff;
+    border-radius:14px; padding:16px 18px; margin-top:20px;
   }
 
   /* 채팅 */
@@ -275,7 +318,12 @@
   .room-enter-btn:hover { background:#fff3ef; border-color:var(--primary); color:var(--primary); }
 
   @media (max-width:480px) {
-    .hero h1 { font-size:38px; letter-spacing:-1.5px; }
+    .hero h1 { font-size:42px; letter-spacing:-2px; }
+    .hero-deco span:nth-child(1) { font-size:36px; }
+    .hero-deco span:nth-child(3) { font-size:32px; }
+    .hero-deco span:nth-child(2),
+    .hero-deco span:nth-child(4),
+    .hero-deco span:nth-child(5) { display:none; }
     .type-card .emoji { font-size:56px; }
     .type-card .tname { font-size:24px; }
     .seg { grid-template-columns:repeat(3,1fr); }
@@ -286,9 +334,12 @@
 <body>
 
   <header class="hero">
-    <span class="badge">🍚 AI 취향 매칭</span>
+    <div class="hero-deco" aria-hidden="true">
+      <span>🍜</span><span>🍱</span><span>🥗</span><span>🍗</span><span>🌮</span>
+    </div>
+    <span class="badge">AI 취향 매칭</span>
     <h1>오늘 점심,<br/><span class="grad">누구랑 뭐 먹지?</span></h1>
-    <p>음식 취향 30초만 입력하면<br/>가장 잘 맞는 <b>밥메이트</b>와 <b>식당</b>을 찾아줘요.</p>
+    <p>음식 취향 30초만 입력하면<br/>딱 맞는 <b>밥메이트</b>와 <b>식당</b>을 찾아줘요.</p>
     <p class="sub">국민대 AI 부트캠프 · 실시간 취향 매칭</p>
   </header>
 
@@ -300,13 +351,13 @@
       <p class="hint">닉네임과 비밀번호를 입력하면 내 취향이 저장돼요.<br/>처음이면 바로 계정이 만들어지고, 재방문이면 내 취향이 불러와져요!</p>
 
       <!-- 재방문 계정 선택 (저장된 세션 있을 때만 표시) -->
-      <div id="returnPrompt" style="display:none;background:#edf8f3;border:1.5px solid #c3e8d4;border-radius:16px;padding:20px;margin-top:18px">
-        <div style="font-size:22px;margin-bottom:6px">👋</div>
-        <div style="font-weight:800;font-size:16px;color:var(--ink)"><span id="returnNickLabel"></span>님, 돌아오셨군요!</div>
-        <div style="color:var(--muted);font-size:13px;margin-top:4px">저장된 계정이 있어요. 이어서 할까요?</div>
-        <div style="display:flex;gap:10px;margin-top:14px">
-          <button class="btn" id="continueAccountBtn" style="margin:0;flex:1;font-size:14px;padding:13px">이 계정으로 계속</button>
-          <button class="btn ghost" id="switchAccountBtn" style="margin:0;flex:1;font-size:14px;padding:13px">다른 계정으로</button>
+      <div id="returnPrompt" style="display:none">
+        <div class="ret-emoji">👋</div>
+        <div class="ret-title"><span id="returnNickLabel"></span>님, 돌아오셨군요!</div>
+        <div class="ret-sub">저장된 계정이 있어요. 이어서 할까요?</div>
+        <div class="ret-actions">
+          <button class="ret-primary-btn" id="continueAccountBtn">이 계정으로 계속</button>
+          <button class="ret-ghost-btn" id="switchAccountBtn">다른 계정으로</button>
         </div>
       </div>
 
@@ -899,10 +950,10 @@ function showContinueBanner(nick, data) {
   banner.innerHTML =
     `<div style="font-size:26px">👋</div>
      <div style="flex:1">
-       <div style="font-weight:800;font-size:15px">${esc(nick)}님, 어서오세요!</div>
-       <div style="color:var(--muted);font-size:13px;margin-top:3px">저번 취향이 저장돼 있어요. 바로 이어서 볼까요?</div>
+       <div style="font-weight:800;font-size:15px;color:#fff">${esc(nick)}님, 어서오세요!</div>
+       <div style="color:rgba(255,255,255,.55);font-size:13px;margin-top:3px">저번 취향이 저장돼 있어요. 바로 이어서 볼까요?</div>
      </div>
-     <button id="continueBtn" class="btn" style="width:auto;margin:0;padding:10px 20px;font-size:14px">이어서 보기 →</button>`;
+     <button id="continueBtn" class="ret-primary-btn" style="width:auto;flex-shrink:0;padding:10px 20px">이어서 보기 →</button>`;
   document.getElementById("form").appendChild(banner);
   document.getElementById("continueBtn").onclick = () => {
     banner.remove();
