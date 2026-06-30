@@ -777,6 +777,7 @@ function renderMates(me, pool, realNicks) {
     const p = m.p;
     const herbLabel = p.herb === 1 ? "🌿 향신료 좋아요" : p.herb === -1 ? "🚫 향신료 싫어요" : null;
     const flavorTags = [
+      `🌶️ ${SPICY_LABEL[p.spicy ?? 2]}`,
       `🧂 ${SALTY_LABEL[p.salty ?? 1]}`,
       `🍬 ${SWEET_LABEL[p.sweet ?? 1]}`,
       ...(herbLabel ? [herbLabel] : [])
