@@ -43,8 +43,9 @@ python3 -m http.server 3000
 
 ### 배포 (실서비스)
 
-- **GitHub Pages** (권장): `Settings → Pages → main branch / (root)` → 링크 공유
-- **S3 + CloudFront**: 버킷 정적 호스팅 + CloudFront HTTPS 배포
+- **현재 배포 URL**: http://kmu-agent-46-babbti-s3.s3-website-us-east-1.amazonaws.com
+- **GitHub Pages**: `Settings → Pages → main branch / (root)` → 링크 공유
+- **S3 정적 호스팅**: 버킷 → 퍼블릭 액세스 허용 → 정적 웹 호스팅 활성화 → index.html 업로드
 - GPS 기능은 **HTTPS 환경 필수** — `file://` 및 HTTP S3 기본 엔드포인트 불가
 
 ## Firebase 연결
@@ -58,24 +59,23 @@ python3 -m http.server 3000
 
 > 발표 후 **DB Rules 잠금 또는 프로젝트 삭제 필수**
 
-## Claude AI 연동
+## Claude AI 연동 (Amazon Bedrock)
 
-밥메이트 매칭 결과 아래에 AI 매칭 코멘트가 자동 생성됩니다.
+밥메이트 매칭 결과 아래에 AI 매칭 코멘트가 자동 생성됩니다. **API 키 설정 없이 바로 동작**합니다.
 
-1. [console.anthropic.com](https://console.anthropic.com) → API Keys → 키 생성
-2. `index.html` 상단 `ANTHROPIC_KEY` 값을 실제 키로 교체
-3. 결과 화면에서 **🤖 AI 매칭 코멘트** 카드 확인
-
-```javascript
-// index.html 상단 설정 블록
-const ANTHROPIC_KEY = "sk-ant-...";  // ← 여기에 붙여넣기
+```
+브라우저 → API Gateway → Lambda → Amazon Bedrock (Claude 3 Haiku)
 ```
 
-- 모델: `claude-haiku-4-5` (빠름·저렴, 데모 최적)
-- 방식: 브라우저 직접 `fetch` + `anthropic-dangerous-direct-browser-access: true` 헤더
-- API 키 미설정 시 안내 메시지만 표시 (서비스 중단 없음)
+| 항목 | 값 |
+|---|---|
+| 모델 | `anthropic.claude-3-haiku-20240307-v1:0` |
+| Lambda | `babbti-ai-comment` (Python 3.12, us-east-1) |
+| API Gateway | `POST https://ucdwp10yu1.execute-api.us-east-1.amazonaws.com/ai-comment` |
+| IAM | `Nxt-Lambda-Bedrock-Role` (브라우저에 자격증명 노출 없음) |
 
-> 발표 후 키 삭제 필수
+- 브라우저에 AWS 자격증명·API 키 노출 없음 (Lambda가 IAM으로 Bedrock 호출)
+- 비용: Claude 3 Haiku 기준 30명 전체 사용 시 $0.01 미만
 
 ## 알고리즘
 
