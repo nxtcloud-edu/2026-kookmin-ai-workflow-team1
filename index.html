@@ -152,7 +152,7 @@
   .real-badge { display:inline-block; font-size:10px; font-weight:700; color:#fff; background:var(--good); padding:2px 7px; border-radius:999px; margin-left:5px; vertical-align:middle; }
   .mate .info .rs { color:var(--muted); font-size:12.5px; margin-top:3px; }
   .mate-tags { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
-  .mate-tags .tag { font-size:11px; font-weight:600; color:var(--muted); background:#f5efea; padding:3px 9px; border-radius:999px; }
+  .mate-tags .tag { font-size:11px; padding:3px 9px; }
   .mate .pct { text-align:center; flex-shrink:0; min-width:52px; }
   .mate .pct .n { font-size:22px; font-weight:800; color:var(--primary-d); }
   .mate .pct .l { font-size:10.5px; color:var(--muted); }
@@ -167,7 +167,6 @@
   .resto .top .rnm { font-weight:800; font-size:15.5px; flex:1; min-width:0; }
   .resto .top .rank { font-size:11px; font-weight:800; color:#fff; background:var(--primary); padding:4px 12px; border-radius:999px; flex-shrink:0; }
   .resto .meta { display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; }
-  .resto .tag { font-size:11.5px; font-weight:600; color:var(--muted); background:#f5efea; padding:4px 10px; border-radius:999px; }
   .resto .why { font-size:13px; color:#7a6d64; margin-top:10px; line-height:1.6; }
 
   /* GPS 토글 */
@@ -253,9 +252,27 @@
   }
   #chatSendBtn:hover { background:var(--primary-d); }
 
-  /* 룸 목록 아이템 호버 */
-  #roomListWrap > div { transition:background .1s; border-radius:12px; }
-  #roomListWrap > div:hover { background:#faf7f4; }
+  /* 전역 태그 */
+  .tag {
+    display:inline-block; font-size:11.5px; font-weight:600;
+    color:var(--muted); background:#f5efea; padding:4px 10px; border-radius:999px;
+  }
+  .tag.primary { background:#fff3ef; color:var(--primary-d); }
+
+  /* 룸 목록 아이템 */
+  .room-item {
+    display:flex; align-items:center; gap:10px; padding:12px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .room-item:last-child { border-bottom:none; }
+  .room-code { font-weight:800; font-size:15px; color:var(--ink); }
+  .room-enter-btn {
+    margin-left:auto; font-size:12px; font-weight:700;
+    border:1.5px solid #ffd2c6; background:#fff; color:var(--primary-d);
+    padding:6px 14px; border-radius:999px; cursor:pointer; font-family:inherit;
+    transition:background .1s, border-color .1s;
+  }
+  .room-enter-btn:hover { background:#fff3ef; border-color:var(--primary); color:var(--primary); }
 
   @media (max-width:480px) {
     .hero h1 { font-size:38px; letter-spacing:-1.5px; }
@@ -1502,14 +1519,11 @@ function initRoomList() {
       return;
     }
     el.innerHTML = rooms.map(r =>
-      `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)">
-         <span style="font-weight:800;font-size:15px">#${esc(r.code)}</span>
-         <span class="tag" style="background:#fff1ea;color:var(--primary-d);font-weight:700">👥 ${r.count}명</span>
-         <span class="tag" style="background:#f6efe9;color:var(--muted)">❤️ ${r.likes}</span>
-         <button onclick="enterRoom('${esc(r.code)}')"
-           style="margin-left:auto;font-size:12px;font-weight:700;border:1.5px solid #ffd2c6;background:#fff;color:var(--primary-d);padding:5px 12px;border-radius:999px;cursor:pointer">
-           이 룸 입장
-         </button>
+      `<div class="room-item">
+         <span class="room-code">#${esc(r.code)}</span>
+         <span class="tag primary">👥 ${r.count}명</span>
+         <span class="tag">❤️ ${r.likes}</span>
+         <button class="room-enter-btn" onclick="enterRoom('${esc(r.code)}')">이 룸 입장</button>
        </div>`
     ).join("");
   });
