@@ -517,7 +517,7 @@ function recommendRestos(group) {
     const spicyScore  = 1 - Math.abs(r.spicy - avgSpicy) / 5;
     const saltyScore  = 1 - Math.abs((r.salty||0) - avgSalty) / 3;
     const sweetScore  = 1 - Math.abs((r.sweet||0) - avgSweet) / 3;
-    const herbScore   = herbVote > 0 ? (r.herb === 1 ? 1 : 0.5) : herbVote < 0 ? (r.herb === -1 ? 0.2 : 0.8) : 0.7;
+    const herbScore   = herbVote > 0 ? (r.herb === 1 ? 1 : 0.5) : herbVote < 0 ? (r.herb === -1 ? 1 : 0.2) : 0.7;
     const budgetScore = 1 - Math.abs(r.price - avgBudget) / 10000;
     const total = catScore*0.38 + spicyScore*0.15 + saltyScore*0.12 + sweetScore*0.08 + herbScore*0.07 + budgetScore*0.20;
     return { r, total };
