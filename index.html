@@ -224,6 +224,7 @@
   .mate .info { flex:1; min-width:0; }
   .mate .info .nm { font-weight:800; font-size:15px; }
   .real-badge { display:inline-block; font-size:10px; font-weight:700; color:#fff; background:var(--good); padding:2px 7px; border-radius:999px; margin-left:5px; vertical-align:middle; }
+  .dummy-badge { display:inline-block; font-size:10px; font-weight:600; color:var(--muted); background:var(--line); padding:2px 7px; border-radius:999px; margin-left:5px; vertical-align:middle; }
   .mate .info .rs { color:var(--muted); font-size:12.5px; margin-top:3px; }
   .mate-tags { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
   .mate-tags .tag { font-size:11px; padding:3px 9px; }
@@ -1363,7 +1364,7 @@ function renderMates(me, pool, realNicks) {
     div.innerHTML =
       `<div class="av">${AVATARS[i % AVATARS.length]}</div>
        <div class="info">
-         <div class="nm">${p.nick}${m.isReal ? ' <span class="real-badge">실제참여</span>' : ''}</div>
+         <div class="nm">${p.nick}${m.isReal ? ' <span class="real-badge">실제참여</span>' : ' <span class="dummy-badge">샘플</span>'}</div>
          <div class="rs">${m.reason}</div>
          <div class="mate-tags">${flavorTags}</div>
          <button class="btn ghost contact-btn" data-nick="${esc(p.nick)}" style="margin-top:8px;font-size:13px;padding:5px 12px">💌 연락하기</button>
