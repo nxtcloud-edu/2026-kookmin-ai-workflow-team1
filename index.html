@@ -421,6 +421,48 @@
     .rn-item { white-space: nowrap; padding: 9px 14px; font-size: 13.5px; width: auto; }
     .rn-dot { display: none; }
   }
+  /* DM 모달 */
+  #dmOverlay {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
+    z-index:1000; align-items:center; justify-content:center;
+  }
+  #dmOverlay.open { display:flex; }
+  #dmBox {
+    background:#fff; border-radius:20px; width:min(94vw,400px);
+    max-height:80vh; display:flex; flex-direction:column;
+    box-shadow:0 8px 40px rgba(0,0,0,.18); overflow:hidden;
+  }
+  #dmHeader {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 18px; border-bottom:1px solid var(--line);
+    font-weight:800; font-size:15px;
+  }
+  #dmCloseBtn {
+    background:none; border:none; font-size:20px; cursor:pointer;
+    color:var(--muted); line-height:1;
+  }
+  #dmMsgs {
+    flex:1; overflow-y:auto; padding:14px; display:flex;
+    flex-direction:column; gap:8px; background:#fdfbf9;
+  }
+  .dm-msg { display:flex; flex-direction:column; max-width:78%; }
+  .dm-msg.mine { align-self:flex-end; align-items:flex-end; }
+  .dm-msg.theirs { align-self:flex-start; align-items:flex-start; }
+  .dm-bubble {
+    padding:9px 13px; border-radius:16px; font-size:14px; line-height:1.5;
+    word-break:break-word;
+  }
+  .dm-msg.mine .dm-bubble { background:var(--primary); color:#fff; border-bottom-right-radius:4px; }
+  .dm-msg.theirs .dm-bubble { background:#f0ece8; color:var(--text); border-bottom-left-radius:4px; }
+  .dm-nick { font-size:11px; color:var(--muted); margin-bottom:3px; }
+  #dmInputRow { display:flex; gap:8px; padding:12px 14px; border-top:1px solid var(--line); }
+  #dmInput { flex:1; width:auto; }
+  #dmSendBtn {
+    padding:9px 16px; background:var(--primary); color:#fff; border:none;
+    border-radius:999px; font-weight:700; font-size:13px; cursor:pointer;
+    font-family:inherit;
+  }
+  #dmSendBtn:hover { background:var(--primary-d); }
 </style>
 </head>
 <body>
@@ -1246,23 +1288,15 @@ function renderMates(me, pool, realNicks) {
     matesEl.appendChild(div);
   });
 
-  // 연락하기 버튼 — 룸 채팅으로 쪽지 전송
+  // 연락하기 버튼 — 1:1 DM 모달 열기
   matesEl.querySelectorAll(".contact-btn").forEach(btn => {
     btn.onclick = () => {
       const toNick = btn.dataset.nick;
-      if (!FIREBASE_ON || !chatRef) {
-        alert("Firebase 연결 시 채팅으로 연락할 수 있어요!\n(Firebase 설정 후 이용 가능)");
+      if (!FIREBASE_ON) {
+        alert("Firebase 연결 시 1:1 쪽지를 보낼 수 있어요!\n(Firebase 설정 후 이용 가능)");
         return;
       }
-      const myNick = me.nick;
-      chatRef.push({
-        nick: myNick,
-        text: `💌 @${toNick}님, 저 ${myNick}인데 같이 밥 먹을래요? 😊`,
-        ts: Date.now()
-      });
-      // 채팅 탭으로 이동
-      const chatTab = document.querySelector('[data-panel="p-live"]');
-      if (chatTab) chatTab.click();
+      openDM(me.nick, toNick);
     };
   });
 
@@ -1734,6 +1768,56 @@ function startChat(code, nick) {
   input.onkeydown = e => { if (e.key === "Enter") send(); };
 }
 
+// 1:1 DM 모달
+let dmRef = null;
+function openDM(myNick, toNick) {
+  const overlay = document.getElementById("dmOverlay");
+  const msgsEl  = document.getElementById("dmMsgs");
+  const input   = document.getElementById("dmInput");
+  const sendBtn = document.getElementById("dmSendBtn");
+
+  document.getElementById("dmTitle").textContent = `💌 ${toNick}님께 쪽지`;
+  overlay.classList.add("open");
+  input.focus();
+
+  // 두 닉네임을 정렬해 항상 같은 경로 사용 (A↔B, B↔A 동일)
+  const pair = [myNick, toNick].sort().join("__");
+  const code = roomCode();
+  if (dmRef) dmRef.off();
+  dmRef = db.ref("rooms/" + code + "/dm/" + pair);
+
+  dmRef.limitToLast(50).on("value", snap => {
+    const list = Object.values(snap.val() || {}).sort((a, b) => a.ts - b.ts);
+    msgsEl.innerHTML = list.length === 0
+      ? `<p style="color:var(--muted);font-size:13px;text-align:center;padding:40px 0">첫 쪽지를 보내보세요! 💌</p>`
+      : list.map(m => {
+          const isMe = m.nick === myNick;
+          const time = new Date(m.ts).toLocaleTimeString("ko-KR", { hour:"2-digit", minute:"2-digit" });
+          return `<div class="dm-msg ${isMe ? 'mine' : 'theirs'}">
+            ${!isMe ? `<div class="dm-nick">${esc(m.nick)}</div>` : ''}
+            <div class="dm-bubble">${esc(m.text)}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">${time}</div>
+          </div>`;
+        }).join("");
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  });
+
+  const send = () => {
+    const text = input.value.trim();
+    if (!text) return;
+    dmRef.push({ nick: myNick, text, ts: Date.now() });
+    input.value = "";
+  };
+  sendBtn.onclick = send;
+  input.onkeydown = e => { if (e.key === "Enter") send(); };
+
+  document.getElementById("dmCloseBtn").onclick = () => {
+    overlay.classList.remove("open");
+    if (dmRef) { dmRef.off(); dmRef = null; }
+  };
+  overlay.onclick = e => { if (e.target === overlay) document.getElementById("dmCloseBtn").click(); };
+}
+
 // 공개 룸이라 외부 입력 닉네임은 반드시 이스케이프
 function esc(s) {
   return String(s).replace(/[&<>"']/g, c =>
@@ -2016,5 +2100,19 @@ function initRoomList() {
   render();
 })();
 </script>
+<!-- DM 모달 -->
+<div id="dmOverlay">
+  <div id="dmBox">
+    <div id="dmHeader">
+      <span id="dmTitle">💌 쪽지</span>
+      <button id="dmCloseBtn">✕</button>
+    </div>
+    <div id="dmMsgs"></div>
+    <div id="dmInputRow">
+      <input type="text" id="dmInput" placeholder="메시지를 입력하세요..." maxlength="100" />
+      <button id="dmSendBtn">전송</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
