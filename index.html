@@ -223,6 +223,15 @@
     border-radius: 14px; padding: 16px; margin-top: 18px;
   }
 
+  /* 채팅 */
+  #chatMsgs { height: 180px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; padding: 10px; background: #fffdfb; }
+  #chatInput { flex: 1; width: auto; }
+  #chatSendBtn {
+    flex-shrink: 0; padding: 0 18px; height: 46px;
+    border: none; border-radius: 12px; background: var(--primary);
+    color: #fff; font-weight: 800; font-size: 14px; font-family: inherit; cursor: pointer;
+  }
+
   @media (max-width: 480px) {
     .hero h1 { font-size: 33px; }
     .seg { grid-template-columns: repeat(3, 1fr); }
@@ -245,6 +254,18 @@
     <section class="card" id="landing" style="margin-top:22px">
       <h2>👋 시작하기</h2>
       <p class="hint">닉네임과 비밀번호를 입력하면 내 취향이 저장돼요.<br/>처음이면 바로 계정이 만들어지고, 재방문이면 내 취향이 불러와져요!</p>
+
+      <!-- 재방문 계정 선택 (저장된 세션 있을 때만 표시) -->
+      <div id="returnPrompt" style="display:none;background:#e8f8f0;border:1.5px solid var(--good);border-radius:14px;padding:16px;margin-top:16px">
+        <div style="font-weight:800;font-size:15px">👋 <span id="returnNickLabel"></span>님으로 계속할까요?</div>
+        <div style="color:var(--muted);font-size:13px;margin-top:4px">이전에 저장된 계정이 있어요.</div>
+        <div style="display:flex;gap:10px;margin-top:12px">
+          <button class="btn" id="continueAccountBtn" style="margin:0;flex:1;font-size:14px;padding:12px">이 계정으로 계속</button>
+          <button class="btn ghost" id="switchAccountBtn" style="margin:0;flex:1;font-size:14px;padding:12px">다른 계정으로</button>
+        </div>
+      </div>
+
+      <div id="loginFormBody">
       <div class="field">
         <label>닉네임</label>
         <input type="text" id="loginNick" placeholder="예) 점심요정" maxlength="12" />
@@ -256,6 +277,7 @@
       </div>
       <button class="btn" id="loginBtn">시작하기 →</button>
       <p class="err" id="loginErr"></p>
+      </div><!-- /loginFormBody -->
     </section>
 
     <!-- ============ 로그인 후 콘텐츠 ============ -->
@@ -372,6 +394,16 @@
         <p class="hint" id="liveStatus" style="font-weight:700;color:var(--ink)">실시간 룸에 연결 중…</p>
         <div id="liveGroups"></div>
         <button class="heart-btn" id="resetRoomBtn" style="margin-top:14px;font-size:13px;padding:8px 16px;display:none">🗑️ 룸 비우기</button>
+
+        <!-- 룸 채팅 -->
+        <div id="chatWrap" style="display:none;margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
+          <p style="font-weight:800;font-size:14px;margin-bottom:8px;color:var(--ink)">💬 룸 채팅</p>
+          <div id="chatMsgs"></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <input type="text" id="chatInput" placeholder="메시지를 입력하세요..." maxlength="100" />
+            <button id="chatSendBtn">전송</button>
+          </div>
+        </div>
       </div>
 
       <div class="sect-title">📊 우리 반 취향 통계</div>
@@ -1265,6 +1297,58 @@ function loadMenuRestos(menu, detailEl) {
 
 /* ====== 라이브 룸 (Firebase Realtime DB) ====== */
 let roomRef = null;
+let chatRef = null;
+
+// 룸 목록에서 입장 버튼 클릭 시
+function enterRoom(code) {
+  document.getElementById("room").value = code;
+  if (currentUser && currentUser.cats) {
+    const cats = Array.isArray(currentUser.cats) ? currentUser.cats : Object.values(currentUser.cats || {});
+    const me = {
+      nick: currentUser.nick, cats,
+      spicy: currentUser.spicy || 2, salty: currentUser.salty || 1,
+      sweet: currentUser.sweet || 1, herb: currentUser.herb || 0,
+      budget: currentUser.budget || 10000, amount: currentUser.amount !== undefined ? currentUser.amount : 1
+    };
+    saveParticipant(me);
+    renderResult(me);
+    joinRoom(me);
+  } else {
+    document.getElementById("form").scrollIntoView({ behavior: "smooth" });
+  }
+}
+
+function startChat(code, nick) {
+  document.getElementById("chatWrap").style.display = "block";
+  const msgs = document.getElementById("chatMsgs");
+  if (chatRef) chatRef.off();
+  chatRef = db.ref("rooms/" + code + "/chat");
+  chatRef.limitToLast(50).on("value", snap => {
+    const list = Object.values(snap.val() || {}).sort((a, b) => a.ts - b.ts);
+    msgs.innerHTML = list.length === 0
+      ? `<p style="color:var(--muted);font-size:13px;text-align:center;padding:60px 0">첫 메시지를 보내보세요! 👋</p>`
+      : list.map(m => {
+          const isMe = m.nick === nick;
+          const time = new Date(m.ts).toLocaleTimeString("ko-KR", { hour:"2-digit", minute:"2-digit" });
+          return `<div style="margin-bottom:8px;text-align:${isMe ? 'right' : 'left'}">
+            ${!isMe ? `<span style="font-size:11px;color:var(--muted);font-weight:700">${esc(m.nick)}</span><br>` : ''}
+            <span style="display:inline-block;background:${isMe ? 'var(--primary)' : '#f0e4da'};color:${isMe ? '#fff' : 'var(--ink)'};padding:6px 12px;border-radius:${isMe ? '14px 14px 4px 14px' : '14px 14px 14px 4px'};font-size:13.5px;max-width:75%;word-break:break-all">${esc(m.text)}</span>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">${time}</div>
+          </div>`;
+        }).join("");
+    msgs.scrollTop = msgs.scrollHeight;
+  });
+  const input = document.getElementById("chatInput");
+  const sendBtn = document.getElementById("chatSendBtn");
+  const send = () => {
+    const text = input.value.trim();
+    if (!text) return;
+    chatRef.push({ nick, text, ts: Date.now() });
+    input.value = "";
+  };
+  sendBtn.onclick = send;
+  input.onkeydown = e => { if (e.key === "Enter") send(); };
+}
 
 // 공개 룸이라 외부 입력 닉네임은 반드시 이스케이프
 function esc(s) {
@@ -1287,6 +1371,7 @@ function joinRoom(me) {
   }
 
   const code = roomCode();
+  if (roomRef) roomRef.off();
   roomRef = db.ref("rooms/" + code + "/members");
 
   // 내 입력 등록 + 브라우저 종료 시 자동 삭제 (onDisconnect)
@@ -1315,6 +1400,9 @@ function joinRoom(me) {
       }));
     renderLive(members, code);
   });
+
+  // 채팅 시작
+  startChat(code, me.nick);
 
   // 재시연용 룸 비우기
   if (resetBtn) {
@@ -1390,7 +1478,7 @@ function initRoomList() {
          <span style="font-weight:800;font-size:15px">#${esc(r.code)}</span>
          <span class="tag" style="background:#fff1ea;color:var(--primary-d);font-weight:700">👥 ${r.count}명</span>
          <span class="tag" style="background:#f6efe9;color:var(--muted)">❤️ ${r.likes}</span>
-         <button onclick="document.getElementById('room').value='${esc(r.code)}'"
+         <button onclick="enterRoom('${esc(r.code)}')"
            style="margin-left:auto;font-size:12px;font-weight:700;border:1.5px solid #ffd2c6;background:#fff;color:var(--primary-d);padding:5px 12px;border-radius:999px;cursor:pointer">
            이 룸 입장
          </button>
@@ -1400,13 +1488,37 @@ function initRoomList() {
 }
 
 /* ---- 자동 로그인 (페이지 로드 시) ---- */
-(async function initAutoLogin() {
+(function initAutoLogin() {
   const saved = getSession();
   if (!saved || !saved.nick || !saved.pw) return;
-  document.getElementById("loginNick").value = saved.nick;
-  document.getElementById("loginPw").value = saved.pw;
-  const result = await tryLogin(saved.nick, saved.pw);
-  if (!result.ok) localStorage.removeItem("babbtiSession");
+
+  // 저장된 계정 감지 → 선택 UI 표시
+  document.getElementById("returnNickLabel").textContent = saved.nick;
+  document.getElementById("returnPrompt").style.display = "block";
+  document.getElementById("loginFormBody").style.display = "none";
+
+  document.getElementById("continueAccountBtn").onclick = async () => {
+    const btn = document.getElementById("continueAccountBtn");
+    btn.disabled = true; btn.textContent = "로그인 중...";
+    const result = await tryLogin(saved.nick, saved.pw);
+    if (!result.ok) {
+      localStorage.removeItem("babbtiSession");
+      document.getElementById("returnPrompt").style.display = "none";
+      document.getElementById("loginFormBody").style.display = "block";
+      document.getElementById("loginErr").textContent = "⚠️ 저장된 계정 정보가 맞지 않아요. 다시 입력해주세요.";
+      document.getElementById("loginErr").style.display = "block";
+      btn.disabled = false; btn.textContent = "이 계정으로 계속";
+    }
+  };
+
+  document.getElementById("switchAccountBtn").onclick = () => {
+    localStorage.removeItem("babbtiSession");
+    document.getElementById("returnPrompt").style.display = "none";
+    document.getElementById("loginFormBody").style.display = "block";
+    document.getElementById("loginNick").value = "";
+    document.getElementById("loginPw").value = "";
+    document.getElementById("loginNick").focus();
+  };
 })();
 </script>
 </body>
