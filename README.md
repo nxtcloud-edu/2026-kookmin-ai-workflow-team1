@@ -1,24 +1,30 @@
 # 밥BTI — 취향 기반 학과 밥 약속 매칭
 
-> 음식 취향 30초 입력 → 찰떡 밥메이트 + 식당 자동 추천  
+> 음식 취향 30초 입력 → 찰떡 밥메이트 + 추천 메뉴 + AI 코멘트 자동 생성  
 > AWS 부트캠프 국민대 AI Workflow 팀 1
 
 ## 서비스 개요
 
 단일 `index.html` 파일 하나로 동작하는 취향 기반 밥 약속 매칭 서비스입니다.  
-서버·빌드 환경 없이 브라우저에서 바로 열리며, Firebase Realtime Database 연결 시 실시간 그룹 매칭이 활성화됩니다.
+서버·빌드 환경 없이 브라우저에서 바로 열리며, Firebase Realtime Database 연결 시 실시간 그룹 매칭·채팅이 활성화됩니다.
 
 ```
 index.html
- ├── 로그인          닉네임 + 비번으로 계정 생성 / 자동 로그인 (localStorage)
+ ├── 로그인          닉네임 + 비번으로 계정 생성 / 자동 로그인 / 계정 전환
  ├── 활성 룸 목록    현재 참여 중인 룸 실시간 표시
- ├── 취향 입력       카테고리·매운맛·짠맛·단맛·향신료·예산·결정스타일
+ ├── 취향 입력
+ │     ├── 1단계    카테고리 칩 선택 (9종: 한식·중식·일식·양식·분식·고기·면류·카페/디저트·샐러드/건강)
+ │     ├── 2단계    세부 메뉴 선택 (35개 항목, 카테고리별 토글)
+ │     ├── 맛 슬라이더  매운맛(0~5) · 짠맛(0~3) · 단맛(0~3)
+ │     ├── 향신료   싫어요 / 상관없어요 / 좋아요 칩 선택
+ │     ├── 예산     슬라이더 (5,000 ~ 20,000원)
+ │     └── 결정스타일  내가정할게 / 같이 / 아무거나
  ├── 밥BTI 타입      9종 중 1개 판정
- ├── 밥메이트 TOP 3  7차원 유사도 알고리즘으로 매칭
- ├── 추천 메뉴 TOP 3 삼겹살 구이·해물 짬뽕 등 음식 이름
- │     └── 📍 주변 실제 식당 보기 (토글)  ← GPS + OSM 으로 그 메뉴를 파는 실제 식당
- ├── 🤖 AI 매칭 코멘트  Claude AI 코멘트 (옵션)
- ├── 라이브 룸       Firebase 연결 시 실시간 3~4인 그룹핑
+ ├── 밥메이트 TOP 3  7차원 유사도 알고리즘으로 매칭 (실제 참여자 우선)
+ ├── 🤖 AI 매칭 코멘트  Claude Haiku 4.5가 이 그룹이 왜 맞는지 자연어로 설명
+ ├── 추천 메뉴 TOP 3  그룹 평균 취향 기반 콘텐츠 매칭
+ │     └── 📍 토글   메뉴별 주변 실제 식당 목록 (Overpass API GPS 검색)
+ ├── 라이브 룸       Firebase 실시간 3~4인 그룹핑 + 실시간 채팅
  └── 취향 통계       매운맛·짠맛·단맛·향신료·인기 카테고리 분포
 ```
 
@@ -41,16 +47,35 @@ python3 -m http.server 3000
 - **S3 + CloudFront**: 버킷 정적 호스팅 + CloudFront HTTPS 배포
 - GPS 기능은 **HTTPS 환경 필수** — `file://` 및 HTTP S3 기본 엔드포인트 불가
 
-## Firebase 연결 (백엔드 담당자)
+## Firebase 연결
 
 1. [Firebase 콘솔](https://console.firebase.google.com) → 프로젝트 만들기
 2. **Realtime Database** → 데이터베이스 만들기 → **테스트 모드로 시작**
 3. 프로젝트 설정 → 내 앱 → 웹 앱 등록 → `firebaseConfig` 복사
-4. `index.html` 상단 `firebaseConfig` 블록에 실제 값 붙여넣기  
+4. `index.html` 상단 `firebaseConfig` 블록에 실제 값 붙여넣기
    - `databaseURL` 반드시 포함 (없으면 Realtime DB 연결 안 됨)
 5. 탭 2개로 같은 룸 코드 입력 → 라이브 룸 "2명 참여 중" 확인
 
-> `apiKey`는 공개돼도 괜찮지만, **발표 후 DB Rules 잠금 또는 프로젝트 삭제 필수**
+> 발표 후 **DB Rules 잠금 또는 프로젝트 삭제 필수**
+
+## Claude AI 연동
+
+밥메이트 매칭 결과 아래에 AI 매칭 코멘트가 자동 생성됩니다.
+
+1. [console.anthropic.com](https://console.anthropic.com) → API Keys → 키 생성
+2. `index.html` 상단 `ANTHROPIC_KEY` 값을 실제 키로 교체
+3. 결과 화면에서 **🤖 AI 매칭 코멘트** 카드 확인
+
+```javascript
+// index.html 상단 설정 블록
+const ANTHROPIC_KEY = "sk-ant-...";  // ← 여기에 붙여넣기
+```
+
+- 모델: `claude-haiku-4-5` (빠름·저렴, 데모 최적)
+- 방식: 브라우저 직접 `fetch` + `anthropic-dangerous-direct-browser-access: true` 헤더
+- API 키 미설정 시 안내 메시지만 표시 (서비스 중단 없음)
+
+> 발표 후 키 삭제 필수
 
 ## 알고리즘
 
@@ -67,7 +92,9 @@ similarity(a, b) =
   + 결정스타일     × 0.08   // |amount_a - amount_b| / 2
 ```
 
-### 메뉴 추천 (그룹 평균 기반)
+> 콜드스타트 상황(취향 1회 입력)에서 협업 필터링(ALS/SVD++) 없이 즉시 동작하는 콘텐츠 기반 방식 채택
+
+### 메뉴 추천 (그룹 평균 취향 기반)
 
 ```
 menu_score =
@@ -79,21 +106,19 @@ menu_score =
   + 향신료 선호    × 0.07
 ```
 
-> 알고리즘 선택 이유: 취향을 1회만 입력하는 콜드스타트 상황 → 상호작용 이력 없이도 즉시 동작하는 콘텐츠 기반 방식 채택 (ALS/SVD++ 협업 필터링 제외)
+### GPS 실제 식당 매칭 (Overpass API)
 
-### 📍 추천 메뉴 → 주변 실제 식당 (토글 + GPS)
+```
+실제_식당_score =
+  그룹 취향 점수  × 0.45
+  + 거리 점수     × 0.45   // haversine 거리, 가까울수록 높음
+  + 기본 점수     × 0.10
+```
 
-"우리 그룹 추천 메뉴"는 그룹 취향으로 뽑은 **음식(메뉴) 카드**(삼겹살 구이·해물 짬뽕·돼지 두루치기 등)로
-표시되고, 각 메뉴의 **"📍 주변 실제 식당 보기"** 를 누르면(토글) 그 아래에 **현재 위치 주변에서
-그 메뉴를 파는 실제 식당**이 펼쳐집니다. (가상 식당 이름 대신 메뉴를 추천하고, 실제 식당은 GPS로)
-
-- **데이터 소스**: [OpenStreetMap Overpass API](https://overpass-api.de) — **API 키 불필요**, 무설정 동작
-- **위치**: 첫 토글 클릭(사용자 제스처) 시 `navigator.geolocation`으로 1회만 좌표를 받아 반경 1km 음식점을 검색하고 캐시 → 메뉴마다 재사용
-- **메뉴 ↔ 식당 매칭**: 한국 식당명은 메뉴가 이름에 들어가는 경우가 많아(예: `박씨돈까스`, `신전떡볶이`) **식당 이름 키워드 매칭**을 1순위로 사용
-  - 메뉴 고유 키워드(`kw`) 이름 포함(+100) > 카테고리 키워드 포함(+60) > OSM `cuisine` 태그 일치(+40), 그 다음 거리순
-  - 예: `등심 돈까스` → 박씨돈까스·행우돈가스 / `매운 떡볶이` → 전설의사발떡볶이
-- **폴백**: 맞는 식당이 없으면 최근접 식당, 위치 거부·실패면 국민대 기준 검색 버튼 제공 (메뉴 카드는 항상 표시)
-- ⚠️ GPS는 **HTTPS(또는 localhost)** 에서만 동작. GitHub Pages·CloudFront+S3(https)·Live Server는 OK, `file://`·HTTP S3 기본 엔드포인트는 막힘.
+- 데이터: [OpenStreetMap Overpass API](https://overpass-api.de) — API 키 불필요
+- OSM `cuisine` 태그 → 밥BTI 9개 카테고리 자동 매핑
+- 추천 메뉴 토글 시 해당 메뉴 키워드로 주변 식당 필터링
+- 실패 시 기존 큐레이션으로 폴백 (화면 깨짐 없음)
 
 ## Firebase 구현 패턴
 
@@ -104,13 +129,14 @@ menu_score =
 | 실시간 연결 상태 표시 | `.info/connected` 리스너 |
 | 좋아요 동시 집계 | `transaction()` 원자적 처리 |
 | XSS 방지 | `esc()` 이스케이프 (닉네임 등 공개 입력값) |
-| 참여자 실시간 동기화 | `on("value")` 리스너 (once → on 교체) |
+| 참여자 실시간 동기화 | `on("value")` 리스너 |
 | 로그인 / 재방문 | Firebase DB 닉네임+비번 저장 + localStorage 자동 로그인 |
+| 실시간 채팅 | Firebase Realtime DB `/rooms/{code}/chat` + `limitToLast(50)` |
 
 ## 팀 역할
 
 | 역할 | 담당 |
 |---|---|
-| 프론트 UI / 취향 알고리즘 | junseok0929 |
-| Firebase 백엔드 / 실시간 동기화 | ChoHyeonChan |
-| GPS 실제 식당 추천 | juneddoha |
+| 프론트 UI / 취향 알고리즘 / Claude AI 연동 | junseok0929 |
+| Firebase 백엔드 / 실시간 동기화 / 채팅 | ChoHyeonChan |
+| GPS 실제 식당 추천 / 메뉴 2단계 선택 | juneddoha |
