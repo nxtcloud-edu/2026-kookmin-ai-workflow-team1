@@ -132,6 +132,8 @@
   .mate .info .nm { font-weight: 800; font-size: 15.5px; }
   .real-badge { display:inline-block; font-size:10px; font-weight:700; color:#fff; background:var(--good); padding:1px 6px; border-radius:999px; margin-left:5px; vertical-align:middle; }
   .mate .info .rs { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .mate-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+  .mate-tags .tag { font-size: 11px; font-weight: 600; color: var(--muted); background: #f6efe9; padding: 3px 8px; border-radius: 8px; }
   .mate .pct {
     text-align: center; flex-shrink: 0;
   }
@@ -153,7 +155,7 @@
 
   /* stats bars */
   .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 13px; }
-  .bar-row .lbl { width: 92px; flex-shrink: 0; color: #6a5d54; font-weight: 600; }
+  .bar-row .lbl { width: 110px; flex-shrink: 0; color: #6a5d54; font-weight: 600; }
   .bar-track { flex: 1; background: #f3eae3; border-radius: 999px; height: 18px; overflow: hidden; }
   .bar-fill {
     display: block; height: 100%; border-radius: 999px; width: 0;
@@ -343,6 +345,12 @@
       <div class="card" style="margin-top:0">
         <p class="hint" style="margin-bottom:14px;font-weight:700;color:var(--ink)">🌶️ 매운맛 분포</p>
         <div id="spicyStats"></div>
+        <p class="hint" style="margin:18px 0 14px;font-weight:700;color:var(--ink)">🧂 짠맛 분포</p>
+        <div id="saltyStats"></div>
+        <p class="hint" style="margin:18px 0 14px;font-weight:700;color:var(--ink)">🍬 단맛 분포</p>
+        <div id="sweetStats"></div>
+        <p class="hint" style="margin:18px 0 14px;font-weight:700;color:var(--ink)">🌿 향신료 선호</p>
+        <div id="herbStats"></div>
         <p class="hint" style="margin:18px 0 14px;font-weight:700;color:var(--ink)">🍽️ 인기 음식 TOP</p>
         <div id="catStats"></div>
       </div>
@@ -764,13 +772,21 @@ function renderMates(me, pool, realNicks) {
   matesEl.innerHTML = "";
   mates.forEach((m, i) => {
     const pct = Math.round(m.score * 100);
+    const p = m.p;
+    const herbLabel = p.herb === 1 ? "🌿 향신료 좋아요" : p.herb === -1 ? "🚫 향신료 싫어요" : null;
+    const flavorTags = [
+      `🧂 ${SALTY_LABEL[p.salty ?? 1]}`,
+      `🍬 ${SWEET_LABEL[p.sweet ?? 1]}`,
+      ...(herbLabel ? [herbLabel] : [])
+    ].map(t => `<span class="tag">${t}</span>`).join("");
     const div = document.createElement("div");
     div.className = "mate";
     div.innerHTML =
       `<div class="av">${AVATARS[i % AVATARS.length]}</div>
        <div class="info">
-         <div class="nm">${m.p.nick}${m.isReal ? ' <span class="real-badge">실제참여</span>' : ''}</div>
+         <div class="nm">${p.nick}${m.isReal ? ' <span class="real-badge">실제참여</span>' : ''}</div>
          <div class="rs">${m.reason}</div>
+         <div class="mate-tags">${flavorTags}</div>
        </div>
        <div class="pct"><div class="n">${pct}%</div><div class="l">일치</div></div>`;
     matesEl.appendChild(div);
@@ -795,6 +811,9 @@ function renderRestos(me, matePeople) {
        <div class="meta">
          <span class="tag">${r.cats.join("·")}</span>
          <span class="tag">🌶️ ${SPICY_LABEL[r.spicy]}</span>
+         <span class="tag">🧂 ${SALTY_LABEL[r.salty ?? 1]}</span>
+         <span class="tag">🍬 ${SWEET_LABEL[r.sweet ?? 1]}</span>
+         ${r.herb === 1 ? '<span class="tag">🌿 향신료 있음</span>' : r.herb === -1 ? '<span class="tag">🚫 향신료 없음</span>' : ''}
          <span class="tag">💰 ${r.price.toLocaleString()}원</span>
        </div>
        <div class="why">${r.desc} — 우리 그룹 취향이랑 잘 맞아요!</div>`;
@@ -825,6 +844,9 @@ function renderResult(me) {
 
   // 4) 통계 (초기)
   renderSpicyStats([me, ...PEOPLE]);
+  renderSaltyStats([me, ...PEOPLE]);
+  renderSweetStats([me, ...PEOPLE]);
+  renderHerbStats([me, ...PEOPLE]);
   renderCatStats([me, ...PEOPLE]);
 
   // 표시 + 스크롤
@@ -847,6 +869,9 @@ function renderResult(me) {
       const newMates = renderMates(me, combined, realNicks);
       renderRestos(me, newMates.map(m => m.p));
       renderSpicyStats([me, ...realPeople, ...PEOPLE]);
+      renderSaltyStats([me, ...realPeople, ...PEOPLE]);
+      renderSweetStats([me, ...realPeople, ...PEOPLE]);
+      renderHerbStats([me, ...realPeople, ...PEOPLE]);
       renderCatStats([me, ...realPeople, ...PEOPLE]);
       showSyncBadge(realPeople.length);
     });
@@ -874,6 +899,34 @@ function renderSpicyStats(all) {
   const max = Math.max(...counts);
   const el = document.getElementById("spicyStats");
   el.innerHTML = SPICY_LABEL.map((lb,i)=>bar(`🌶️ ${lb}`, counts[i], max)).join("");
+  animateBars(el, counts, max);
+}
+
+function renderSaltyStats(all) {
+  const counts = [0,0,0,0];
+  all.forEach(p => counts[p.salty ?? 1]++);
+  const max = Math.max(...counts);
+  const el = document.getElementById("saltyStats");
+  el.innerHTML = SALTY_LABEL.map((lb,i)=>bar(`🧂 ${lb}`, counts[i], max)).join("");
+  animateBars(el, counts, max);
+}
+
+function renderSweetStats(all) {
+  const counts = [0,0,0,0];
+  all.forEach(p => counts[p.sweet ?? 1]++);
+  const max = Math.max(...counts);
+  const el = document.getElementById("sweetStats");
+  el.innerHTML = SWEET_LABEL.map((lb,i)=>bar(`🍬 ${lb}`, counts[i], max)).join("");
+  animateBars(el, counts, max);
+}
+
+function renderHerbStats(all) {
+  const counts = [0,0,0]; // [-1, 0, 1] → index+1
+  all.forEach(p => counts[(p.herb ?? 0) + 1]++);
+  const labels = ["🚫 싫어요","😐 상관없어요","🌿 좋아요"];
+  const max = Math.max(...counts);
+  const el = document.getElementById("herbStats");
+  el.innerHTML = labels.map((lb,i)=>bar(lb, counts[i], max)).join("");
   animateBars(el, counts, max);
 }
 
