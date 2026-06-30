@@ -734,14 +734,21 @@ async function generateAIComment(me, mates) {
 
   const meDesc = `선호음식:${me.cats.join("·")}, 매운맛:${SPICY_LABEL[me.spicy]}, 짠맛:${SALTY_LABEL[me.salty??1]}, 단맛:${SWEET_LABEL[me.sweet??1]}, 향신료:${me.herb===1?"좋아요":me.herb===-1?"싫어요":"상관없음"}, 예산:${me.budget.toLocaleString()}원`;
 
-  const prompt = `밥 약속 매칭 서비스 "밥BTI"의 AI 코멘터입니다.
+  const prompt = `너는 국민대 AI 부트캠프 점심 매칭 앱 "밥BTI"의 재치있는 매칭 해설가야.
 
-${me.nick}님 취향: ${meDesc}
+[${me.nick}님 취향]
+${meDesc}
 
-매칭 밥메이트:
+[AI가 골라준 밥메이트]
 ${matesDesc}
 
-위 매칭이 왜 잘 맞는지 2~3문장으로 재미있고 따뜻하게 한국어로 코멘트해주세요. 이모지 1~2개 포함. 150자 이내. 딱딱하지 않게 친구처럼.`;
+이 매칭이 왜 찰떡인지 설명해줘. 아래 규칙 꼭 지켜:
+- 딱 3문장
+- ${me.nick}님 이름 첫 문장에 한 번만 넣어
+- 공통점 한 가지 + 시너지 한 가지 언급
+- 친구한테 카톡 보내듯 가볍고 재밌게
+- 이모지 1~2개만
+- 존댓말 유지`;
 
   try {
     const res = await fetch(BEDROCK_API_URL, {
