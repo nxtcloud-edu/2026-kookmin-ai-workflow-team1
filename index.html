@@ -130,6 +130,7 @@
   }
   .mate .info { flex: 1; min-width: 0; }
   .mate .info .nm { font-weight: 800; font-size: 15.5px; }
+  .real-badge { display:inline-block; font-size:10px; font-weight:700; color:#fff; background:var(--good); padding:1px 6px; border-radius:999px; margin-left:5px; vertical-align:middle; }
   .mate .info .rs { color: var(--muted); font-size: 13px; margin-top: 2px; }
   .mate .pct {
     text-align: center; flex-shrink: 0;
@@ -294,11 +295,13 @@
   /* ★ 여기에 본인 Firebase 프로젝트 설정을 붙여넣으세요 (콘솔 > 프로젝트 설정 > 웹앱) ★
      설정 안 하면 자동으로 '단일 기기 데모 모드'로 동작합니다. */
   const firebaseConfig = {
-    apiKey:      "PASTE_API_KEY",
-    authDomain:  "PASTE.firebaseapp.com",
-    databaseURL: "https://PASTE-default-rtdb.firebaseio.com",
-    projectId:   "PASTE",
-    appId:       "PASTE_APP_ID"
+    apiKey:            "REMOVED_REPOSITORY_KEY",
+    authDomain:        "babbti.firebaseapp.com",
+    databaseURL:       "https://babbti-default-rtdb.firebaseio.com",
+    projectId:         "babbti",
+    storageBucket:     "babbti.firebasestorage.app",
+    messagingSenderId: "570497484043",
+    appId:             "1:570497484043:web:d3d1a8b75065ff0f3a4e0e"
   };
   let db = null, FIREBASE_ON = false;
   try {
@@ -506,44 +509,40 @@ document.getElementById("heartBtn").onclick = function() {
 };
 
 /* ============== 결과 렌더 ============== */
-function renderResult(me) {
-  // 1) 밥BTI 타입
-  const t = decideType(me);
-  document.getElementById("typeEmoji").textContent = t.emoji;
-  document.getElementById("typeName").textContent = t.name;
-  document.getElementById("typeDesc").textContent = t.desc;
-  document.getElementById("typeNick").textContent = `@${me.nick} 님의 밥BTI`;
+const AVATARS = ["🦊","🐻","🐰","🐼","🐱","🐯","🐧","🦁","🐨"];
+const RANK = ["1순위","2순위","3순위"];
 
-  // 2) 밥메이트 (유사도 상위 3명)
-  const ranked = PEOPLE
-    .map(p => ({ p, ...similarity(me, p) }))
-    .sort((a,b)=>b.score-a.score);
-  const mates = ranked.slice(0,3);
+function renderMates(me, pool, realNicks) {
+  const ranked = pool
+    .filter(p => p.nick !== me.nick)
+    .map(p => ({ p, isReal: realNicks ? realNicks.has(p.nick) : false, ...similarity(me, p) }))
+    .sort((a,b) => b.score - a.score);
+  const mates = ranked.slice(0, 3);
 
   const matesEl = document.getElementById("mates");
   matesEl.innerHTML = "";
-  const AVATARS = ["🦊","🐻","🐰","🐼","🐱","🐯","🐧","🦁","🐨"];
-  mates.forEach((m,i) => {
-    const pct = Math.round(m.score*100);
+  mates.forEach((m, i) => {
+    const pct = Math.round(m.score * 100);
     const div = document.createElement("div");
     div.className = "mate";
     div.innerHTML =
       `<div class="av">${AVATARS[i % AVATARS.length]}</div>
        <div class="info">
-         <div class="nm">${m.p.nick}</div>
+         <div class="nm">${m.p.nick}${m.isReal ? ' <span class="real-badge">실제참여</span>' : ''}</div>
          <div class="rs">${m.reason}</div>
        </div>
        <div class="pct"><div class="n">${pct}%</div><div class="l">일치</div></div>`;
     matesEl.appendChild(div);
   });
+  return mates;
+}
 
-  // 3) 식당 추천 (나 + 밥메이트 그룹 기준)
-  const group = [me, ...mates.map(m=>m.p)];
+function renderRestos(me, matePeople) {
+  const group = [me, ...matePeople];
   const recs = recommendRestos(group);
   const restosEl = document.getElementById("restos");
   restosEl.innerHTML = "";
-  const RANK = ["1순위","2순위","3순위"];
-  recs.forEach((r,i) => {
+  recs.forEach((r, i) => {
     const div = document.createElement("div");
     div.className = "resto";
     div.innerHTML =
@@ -560,16 +559,53 @@ function renderResult(me) {
        <div class="why">${r.desc} — 우리 그룹 취향이랑 잘 맞아요!</div>`;
     restosEl.appendChild(div);
   });
+}
 
-  // 4) 반 통계 (나 포함 16명)
-  const all = [me, ...PEOPLE];
-  renderSpicyStats(all);
-  renderCatStats(all);
+function saveParticipant(me) {
+  if (!FIREBASE_ON) return;
+  db.ref("participants").push({
+    nick: me.nick, cats: me.cats,
+    spicy: me.spicy, budget: me.budget, amount: me.amount
+  });
+}
+
+function renderResult(me) {
+  // 1) 밥BTI 타입
+  const t = decideType(me);
+  document.getElementById("typeEmoji").textContent = t.emoji;
+  document.getElementById("typeName").textContent = t.name;
+  document.getElementById("typeDesc").textContent = t.desc;
+  document.getElementById("typeNick").textContent = `@${me.nick} 님의 밥BTI`;
+
+  // 2+3) 더미 데이터로 즉시 렌더
+  const initMates = renderMates(me, PEOPLE, null);
+  renderRestos(me, initMates.map(m => m.p));
+
+  // 4) 통계 (초기)
+  renderSpicyStats([me, ...PEOPLE]);
+  renderCatStats([me, ...PEOPLE]);
 
   // 표시 + 스크롤
   const res = document.getElementById("result");
   res.style.display = "block";
   res.scrollIntoView({ behavior:"smooth" });
+
+  // Firebase 참여자 저장 + 실제 데이터로 재렌더
+  saveParticipant(me);
+  if (FIREBASE_ON) {
+    db.ref("participants").once("value", snap => {
+      const data = snap.val();
+      if (!data) return;
+      const realPeople = Object.values(data).filter(p => p.nick !== me.nick);
+      if (realPeople.length === 0) return;
+      const realNicks = new Set(realPeople.map(p => p.nick));
+      const combined = [...realPeople, ...PEOPLE];
+      const newMates = renderMates(me, combined, realNicks);
+      renderRestos(me, newMates.map(m => m.p));
+      renderSpicyStats([me, ...realPeople, ...PEOPLE]);
+      renderCatStats([me, ...realPeople, ...PEOPLE]);
+    });
+  }
 }
 
 function bar(label, count, max) {
