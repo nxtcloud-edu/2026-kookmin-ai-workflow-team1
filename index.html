@@ -1610,14 +1610,21 @@ function joinRoom(me) {
   // 채팅 시작
   startChat(code, me.nick);
 
-  // 재시연용 룸 비우기
-  if (resetBtn) {
-    resetBtn.style.display = "inline-block";
-    resetBtn.onclick = () => {
-      if (confirm("이 룸(" + roomCode() + ")의 참여자 데이터를 모두 지울까요?"))
-        db.ref("rooms/" + roomCode() + "/members").remove();
-    };
-  }
+  // 룸 생성자(host) 등록 — 처음 들어온 사람만 host가 됨
+  const hostRef = db.ref("rooms/" + code + "/host");
+  hostRef.transaction(current => current === null ? me.nick : current, (err, committed, snap) => {
+    if (err || !snap) return;
+    const host = snap.val();
+    if (resetBtn && host === me.nick) {
+      resetBtn.style.display = "inline-block";
+      resetBtn.onclick = () => {
+        if (confirm("이 룸(" + code + ")의 참여자 데이터를 모두 지울까요?")) {
+          db.ref("rooms/" + code + "/members").remove();
+          db.ref("rooms/" + code + "/host").remove();
+        }
+      };
+    }
+  });
 }
 
 function renderLive(members, code) {
