@@ -908,23 +908,26 @@ document.getElementById("retryBtn").onclick = () => {
 let liked = false;
 document.getElementById("heartBtn").onclick = function() {
   liked = !liked;
-  const c = document.getElementById("likeCount");
-  c.textContent = Number(c.textContent) + (liked ? 1 : -1);
   this.classList.toggle("liked", liked);
   this.firstChild.textContent = liked ? "❤️ 좋아요 " : "🤍 좋아요 ";
 
-  // Firebase 연결 시 전체 좋아요 수 집계
   if (FIREBASE_ON) {
     const code = roomCode();
     db.ref("rooms/" + code + "/likes").transaction(v => (v || 0) + (liked ? 1 : -1));
-    // 집계값 실시간 표시
-    db.ref("rooms/" + code + "/likes").on("value", snap => {
-      const total = snap.val() || 0;
-      const totalEl = document.getElementById("likeCount");
-      if (totalEl) totalEl.textContent = total;
-    });
+  } else {
+    // Firebase 없을 때만 로컬 카운트
+    const c = document.getElementById("likeCount");
+    c.textContent = Number(c.textContent) + (liked ? 1 : -1);
   }
 };
+
+function startLikesListener(code) {
+  if (!FIREBASE_ON) return;
+  db.ref("rooms/" + code + "/likes").on("value", snap => {
+    const totalEl = document.getElementById("likeCount");
+    if (totalEl) totalEl.textContent = snap.val() || 0;
+  });
+}
 
 /* ============== 결과 렌더 ============== */
 const AVATARS = ["🦊","🐻","🐰","🐼","🐱","🐯","🐧","🦁","🐨"];
@@ -1173,6 +1176,9 @@ function renderResult(me) {
 
   // AI 매칭 코멘트 생성 (mates 렌더 직후 비동기 호출)
   generateAIComment(me, initMates);
+
+  // 좋아요 실시간 반영 (클릭 전에도 다른 사람 좋아요 즉시 표시)
+  startLikesListener(roomCode());
 
   // 실시간 리스너로 지속 반영
   if (FIREBASE_ON) {
