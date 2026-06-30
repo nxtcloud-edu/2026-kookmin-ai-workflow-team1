@@ -36,7 +36,7 @@
 
 ## 4. 코드 구조 (전부 `index.html` 한 파일 안)
 - `<style>`: 디자인(따뜻한 오렌지 톤, 카드 UI, 모바일 반응형)
-- `CATS`: 음식 카테고리 9종 / `PEOPLE`: 데모용 샘플 15명 / `MENUS`: 추천 메뉴(음식) 12종 — 가상 식당이 아니라 "삼겹살 구이·해물 짬뽕·돼지 두루치기" 같은 메뉴 이름
+- `CATS`: 음식 카테고리 9종 / `DISHES`: 선택용 대표 세부 음식(삼겹살·짜장면·초밥 등, 각 음식 → 카테고리 매핑). **분류 칩을 누르면 해당 메뉴가 아래 `dishPanel`에 펼쳐지는 2단계(아코디언) 선택** (`openCat`/`renderDishPanel`/`refreshCatChips`/`recomputeCats`) / `PEOPLE`: 데모용 샘플 15명 / `MENUS`: 추천 메뉴(음식) 12종 — 가상 식당이 아니라 "삼겹살 구이·해물 짬뽕·돼지 두루치기" 같은 메뉴 이름
 - `decideType(u)`: 밥BTI 타입 판정 (우선순위 규칙 기반)
 - `similarity(a,b)`: 두 사람 **7차원** 유사도(병합) = 카테고리 자카드 0.32 + 매운맛 0.18 + **짠맛 0.12 + 단맛 0.10 + 향신료 0.08** + 예산 0.12 + 식사량 0.08 가중합, + 매칭 이유 문구 생성
 - `recommendRestos(group)`: 그룹 평균 취향 ↔ 메뉴(음식) 속성 매칭(콘텐츠 기반) → 추천 메뉴 TOP3. 점수 = 카테고리 0.38 + 예산 0.20 + 매운맛 0.15 + 짠맛 0.12 + 단맛 0.08 + 향신료 0.07. 데이터는 `MENUS`(음식 이름 + `salty`/`sweet`/`herb` 맛속성 + `kw`)
@@ -44,18 +44,21 @@
 - `renderSpicyStats`/`renderSaltyStats`/`renderSweetStats`/`renderHerbStats`/`renderCatStats`(병합): 맛 차원별 분포 막대그래프
 - `fetchNearbyRestos(lat,lon,radius)` + `osmToResto` + `haversine` + `loadNearby`(위치 1회 획득·캐시) + `matchRestosForMenu`(메뉴별 이름 키워드 매칭) + `loadMenuRestos`(토글 펼침 시 렌더): **📍 메뉴→주변 실제 식당**. Overpass API로 주변 음식점 검색 → 식당 이름에 메뉴 키워드(`MENUS[].kw`)/카테고리 키워드(`CAT_KEYWORDS`)/cuisine 태그 매칭 점수(+100/+60/+40) + 거리순. `renderRestos`가 각 메뉴를 토글 카드(`.resto-head`/`.resto-detail`)로 렌더. GPS 실패 시 원인별 메시지 + `DEFAULT_LOC`(국민대) 폴백.
 - `formGroups(members, size)`: 그리디 그룹핑(유사도 높은 사람끼리 묶기) — 라이브 룸용
+- `enterRoom(code)`(활성 룸 입장) + `joinRoom(me)` + `startChat(code,nick)`: 룸 입장 시 멤버 등록·실시간 갱신 + **이전 채팅 기록 로드(`limitToLast(50).on`)** + 메시지 송수신. 취향 입력 없이도 입장 가능.
+- `OVERPASS_ENDPOINTS`: Overpass 미러 3곳(overpass-api.de → maps.mail.ru → kumi). `fetchNearbyRestos`가 순차 폴백 + 12초 타임아웃(AbortController)으로 호출.
 - Firebase: 상단 `firebaseConfig`(현재 `PASTE_` 자리표시자) — 설정하면 실시간 켜짐
 
 ## 5. ⏳ 남은 작업 (우선순위)
-1. **Firebase 실시간 켜기** ← 한 사람이 5분이면 함
-   - [console.firebase.google.com](https://console.firebase.google.com) → 프로젝트 만들기
-   - 빌드 > **Realtime Database** > 데이터베이스 만들기 > **테스트 모드로 시작**
-   - ⚙️ 프로젝트 설정 > 내 앱 > 웹(`</>`) 등록 > `firebaseConfig` 복사
-   - `index.html` 상단 `firebaseConfig`의 `PASTE_...` 4줄 교체 (**`databaseURL` 꼭 포함**)
-   - 테스트: 2개 탭/기기에서 같은 룸코드(`lunch`)로 제출 → "지금 2명 참여 중" + 그룹 뜨면 성공
-2. **배포**: `index.html`을 **S3 정적 웹호스팅** 또는 **GitHub Pages**에 올려 투표용 링크 만들기
-3. **표심 강화(여유 시)**: 결과를 이미지 카드로 저장/공유(스샷각), ~~식당 데이터를 실제 학교 앞 맛집으로 교체~~ → **✅ GPS 주변 실제 식당 검색으로 대체 구현됨** (Overpass API), 통계 비주얼 강화
-4. **발표 준비**: "왜 코사인/클러스터링을 골랐나(콜드스타트)" 1장, 데모 시나리오(전원이 같은 룸코드로 동시 입력 → 실시간 그룹 형성)
+1. ~~**Firebase 실시간 켜기**~~ → **✅ 연결 완료** (`babbti` 프로젝트). 실시간 룸/채팅/좋아요/로그인 동작 중. 데모 후 DB Rules 잠금 또는 프로젝트 삭제 필수.
+   - 룸 입장: 활성 룸 목록의 "이 룸 입장" → 취향 없이도 입장, **이전 채팅 기록 이어서 대화**(실시간)
+2. **배포**: `index.html`을 **GitHub Pages** 또는 **CloudFront+S3(HTTPS)** 에 올려 투표용 링크 만들기 (GPS·geolocation은 HTTPS/localhost에서만 동작)
+3. **표심 강화(여유 시)**: 결과를 이미지 카드로 저장/공유(스샷각), ~~식당 데이터를 실제 학교 앞 맛집으로 교체~~ → **✅ GPS 주변 실제 식당(토글, Overpass 다중 미러)** 으로 구현됨, 통계 비주얼 강화
+4. **AI 코멘트 운영화**: 현재 Anthropic 직호출(브라우저, 키 노출 위험) → **Bedrock + Lambda 프록시**로 전환 예정(부트캠프 AWS 크레딧으로 비용 커버). 데모 후 키 폐기.
+5. **발표 준비**: "왜 코사인/클러스터링을 골랐나(콜드스타트)" 1장, 데모 시나리오(전원이 같은 룸코드로 동시 입력 → 실시간 그룹 형성)
+
+### 최근 반영(2026-06-30)
+- 좋아하는 음식 선택을 **분류 → 메뉴 2단계(아코디언)** 로: 분류 칩(양식 등)을 누르면 그 아래에 해당 메뉴(파스타·피자…)가 펼쳐져 선택. 내부적으로 9개 카테고리 매핑.
+- 룸 입장 버그 수정(취향 없이도 입장+채팅), 주변 식당 검색 **Overpass 미러 3곳 폴백**으로 안정화
 
 ## 6. 분담 제안 (3명)
 1. **데이터 수집/입력 UI** — 입력폼, 데이터 포맷, (원하면) 구글폼 연동
