@@ -1,65 +1,114 @@
-# 🍚 밥BTI — 취향기반 학과 밥 약속 매칭
+# 밥BTI — 취향 기반 학과 밥 약속 매칭
 
 > 음식 취향 30초 입력 → 찰떡 밥메이트 + 식당 자동 추천  
 > AWS 부트캠프 국민대 AI Workflow 팀 1
 
-## 서비스 구조
+## 서비스 개요
 
-단일 `index.html` 파일 하나로 동작합니다. 서버 없이 브라우저에서 바로 열면 됩니다.  
-실시간 룸 매칭 기능은 **Firebase Realtime Database**를 붙여야 활성화됩니다.
+단일 `index.html` 파일 하나로 동작하는 취향 기반 밥 약속 매칭 서비스입니다.  
+서버·빌드 환경 없이 브라우저에서 바로 열리며, Firebase Realtime Database 연결 시 실시간 그룹 매칭이 활성화됩니다.
 
 ```
 index.html
- ├── 취향 입력 폼  (카테고리·매이망·예산·결정스타일)
- ├── 밥BTI 타입 결과
- ├── 밥메이트 TOP 3  (유사도 알고리즘)
- ├── 추천 식당 TOP 3  (그룹 취향 합산)
- │     └── 📍 내 주변 실제 식당 찾기  ← GPS + OpenStreetMap 으로 실제 식당 검색
- ├── 🔴 라이브 룸     ← Firebase 연결 시 실시간 활성화
- └── 📊 취향 통계
+ ├── 로그인          닉네임 + 비번으로 계정 생성 / 자동 로그인 (localStorage)
+ ├── 활성 룸 목록    현재 참여 중인 룸 실시간 표시
+ ├── 취향 입력       카테고리·매운맛·짠맛·단맛·향신료·예산·결정스타일
+ ├── 밥BTI 타입      9종 중 1개 판정
+ ├── 밥메이트 TOP 3  7차원 유사도 알고리즘으로 매칭
+ ├── 추천 식당 TOP 3 그룹 평균 취향 기반 콘텐츠 매칭
+ │     └── GPS 버튼  OpenStreetMap으로 반경 800m 실제 식당 검색
+ ├── 라이브 룸       Firebase 연결 시 실시간 3~4인 그룹핑
+ └── 취향 통계       매운맛·짠맛·단맛·향신료·인기 카테고리 분포
 ```
 
-## Firebase 연결 방법 (백엔드 담당자)
+## 실행 방법
+
+### 로컬 데모 (Firebase 없이)
+```bash
+# 방법 1: Python 서버
+python3 -m http.server 3000
+# http://localhost:3000/index.html
+
+# 방법 2: VS Code Live Server 확장 설치 후 index.html 우클릭 → Open with Live Server
+```
+
+> `file://` 직접 열기는 Firebase CORS 차단 및 GPS 미동작 가능성 있음
+
+### 배포 (실서비스)
+
+- **GitHub Pages** (권장): `Settings → Pages → main branch / (root)` → 링크 공유
+- **S3 + CloudFront**: 버킷 정적 호스팅 + CloudFront HTTPS 배포
+- GPS 기능은 **HTTPS 환경 필수** — `file://` 및 HTTP S3 기본 엔드포인트 불가
+
+## Firebase 연결 (백엔드 담당자)
 
 1. [Firebase 콘솔](https://console.firebase.google.com) → 프로젝트 만들기
 2. **Realtime Database** → 데이터베이스 만들기 → **테스트 모드로 시작**
-3. 프로젝트 설정 → 내 앱 → 웹(`</>`) 앱 등록 → `firebaseConfig` 복사
-4. `index.html` 하단 `firebaseConfig` 블록의 `PASTE_*` 값 4줄 교체
-   - `apiKey`, `authDomain`, `databaseURL`, `projectId`, `appId`
-   - **`databaseURL`은 반드시 포함** (없으면 Realtime DB 연결 안 됨)
-5. 테스트: 브라우저 탭 2개로 같은 룸 코드 입력 → 라이브 룸에서 "2명 참여 중" 확인
+3. 프로젝트 설정 → 내 앱 → 웹 앱 등록 → `firebaseConfig` 복사
+4. `index.html` 상단 `firebaseConfig` 블록에 실제 값 붙여넣기  
+   - `databaseURL` 반드시 포함 (없으면 Realtime DB 연결 안 됨)
+5. 탭 2개로 같은 룸 코드 입력 → 라이브 룸 "2명 참여 중" 확인
 
-> ⚠️ `apiKey`는 공개돼도 괜찮지만, **데모 끝나면 프로젝트 삭제 또는 DB 규칙 잠금**
+> `apiKey`는 공개돼도 괜찮지만, **발표 후 DB Rules 잠금 또는 프로젝트 삭제 필수**
 
-## 배포
+## 알고리즘
 
-- **GitHub Pages** (권장): `Settings → Pages → main branch / (root)` → 링크 공유
-- **S3 정적 호스팅**: 버킷 정책 퍼블릭 읽기 허용 후 `index.html` 업로드
+### 밥메이트 유사도 (7차원 가중합)
 
-## 알고리즘 요약
-
-```js
+```
 similarity(a, b) =
-  자카드(cats) × 0.40
-  + (1 - |spicy_a - spicy_b| / 5) × 0.30
-  + (1 - |budget_a - budget_b| / 10000) × 0.18
-  + (결정스타일 보완) × 0.12
+  Jaccard(cats)    × 0.32   // 음식 카테고리 겹침
+  + 매운맛 근접도  × 0.18   // |spicy_a - spicy_b| / 5
+  + 짠맛 근접도    × 0.12   // |salty_a - salty_b| / 3
+  + 단맛 근접도    × 0.10   // |sweet_a - sweet_b| / 3
+  + 향신료 일치    × 0.08   // 같으면 1.0, 인접 0.5, 반대 0.0
+  + 예산 근접도    × 0.12   // |budget_a - budget_b| / 10000
+  + 결정스타일     × 0.08   // |amount_a - amount_b| / 2
 ```
 
-## 📍 내 주변 실제 식당 찾기 (GPS 기반)
+### 식당 추천 (그룹 평균 기반)
 
-결과 화면의 **"📍 내 주변 실제 식당 찾기"** 버튼을 누르면, 가상 큐레이션 대신
-**현재 GPS 위치 주변의 진짜 식당**을 검색해서 우리 그룹 취향으로 추천해 줍니다.
+```
+resto_score =
+  카테고리 투표합  × 0.38
+  + 예산 근접도    × 0.20
+  + 매운맛 근접도  × 0.15
+  + 짠맛 근접도    × 0.12
+  + 단맛 근접도    × 0.08
+  + 향신료 선호    × 0.07
+```
 
-- **데이터 소스**: [OpenStreetMap Overpass API](https://overpass-api.de) — **API 키 불필요**, 별도 가입/설정 없이 바로 동작
-- **흐름**: `navigator.geolocation`으로 현재 좌표 → Overpass로 반경 800m 내 음식점(`restaurant`/`fast_food`/`cafe`) 검색 → OSM `cuisine` 태그를 밥BTI 9개 카테고리로 매핑 → **그룹 취향 점수(0.45) + 거리 점수(0.45) + 기본(0.10)** 으로 랭킹 → TOP 4 카드(거리 + 카카오맵 링크) 표시
-- **폴백**: 위치 권한 거부 / 검색 실패 / 주변 데이터 없음 → 기존 가상 큐레이션 추천을 그대로 유지 (안 깨짐)
-- ⚠️ GPS는 **HTTPS 환경**에서만 동작합니다. GitHub Pages·S3(https)·VS Code Live Server(localhost)는 OK, `file://` 직접 열기는 막힐 수 있어요.
+> 알고리즘 선택 이유: 취향을 1회만 입력하는 콜드스타트 상황 → 상호작용 이력 없이도 즉시 동작하는 콘텐츠 기반 방식 채택 (ALS/SVD++ 협업 필터링 제외)
+
+### GPS 실제 식당 추천 (Overpass API)
+
+```
+실제_식당_score =
+  그룹 취향 점수  × 0.45
+  + 거리 점수     × 0.45   // haversine 거리, 가까울수록 높음
+  + 기본 점수     × 0.10
+```
+
+- 데이터: [OpenStreetMap Overpass API](https://overpass-api.de) — API 키 불필요
+- OSM `cuisine` 태그 → 밥BTI 9개 카테고리 자동 매핑
+- 실패 시 기존 가상 큐레이션으로 폴백 (화면 깨짐 없음)
+
+## Firebase 구현 패턴
+
+| 기능 | 구현 방식 |
+|---|---|
+| 브라우저 종료 시 자동 퇴장 | `onDisconnect().remove()` |
+| 좀비 참여자 필터 | 클라이언트 10분 타임스탬프 필터 |
+| 실시간 연결 상태 표시 | `.info/connected` 리스너 |
+| 좋아요 동시 집계 | `transaction()` 원자적 처리 |
+| XSS 방지 | `esc()` 이스케이프 (닉네임 등 공개 입력값) |
+| 참여자 실시간 동기화 | `on("value")` 리스너 (once → on 교체) |
+| 로그인 / 재방문 | Firebase DB 닉네임+비번 저장 + localStorage 자동 로그인 |
 
 ## 팀 역할
 
 | 역할 | 담당 |
 |---|---|
-| 백엔드 (Firebase 연결·배포) | — |
-| 프론트 UI / 알고리즘 | — |
-| 결과 카드·통계 시각화 | — |
+| 프론트 UI / 취향 알고리즘 | junseok0929 |
+| Firebase 백엔드 / 실시간 동기화 | ChoHyeonChan |
+| GPS 실제 식당 추천 | juneddoha |
