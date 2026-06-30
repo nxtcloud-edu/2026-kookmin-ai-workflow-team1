@@ -379,12 +379,6 @@
     <!-- ============ 로그인 후 콘텐츠 ============ -->
     <div id="mainContent" style="display:none">
 
-    <!-- 로그인 상태 바 -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:18px;padding:12px 16px;background:#fff;border:1px solid var(--line);border-radius:14px">
-      <span style="font-size:14px;font-weight:700;color:var(--ink)">👤 <span id="loggedInNick"></span>님으로 로그인 중</span>
-      <button id="logoutBtn" style="font-size:13px;font-weight:700;color:var(--muted);background:none;border:1.5px solid var(--line);border-radius:999px;padding:6px 14px;cursor:pointer">로그아웃</button>
-    </div>
-
     <!-- 활성 룸 목록 -->
     <section class="card" id="roomListCard" style="margin-top:18px">
       <h2>🔴 지금 열린 룸</h2>
@@ -529,6 +523,7 @@
       </div>
 
       <button class="btn ghost" id="retryBtn">↩️ 다시 해보기</button>
+      <button class="btn ghost" id="logoutBtn" style="margin-top:10px;color:var(--muted);border-color:var(--line)">🚪 로그아웃</button>
     </section>
 
     </div><!-- /mainContent -->
@@ -967,7 +962,6 @@ function enterSession(user) {
   localStorage.setItem("babbtiSession", JSON.stringify({ nick: user.nick, pw: user.pw }));
   document.getElementById("landing").style.display = "none";
   document.getElementById("mainContent").style.display = "block";
-  document.getElementById("loggedInNick").textContent = esc(user.nick);
   const nickEl = document.getElementById("nick");
   nickEl.value = user.nick;
   nickEl.readOnly = true;
