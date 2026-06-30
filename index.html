@@ -1240,10 +1240,32 @@ function renderMates(me, pool, realNicks) {
          <div class="nm">${p.nick}${m.isReal ? ' <span class="real-badge">실제참여</span>' : ''}</div>
          <div class="rs">${m.reason}</div>
          <div class="mate-tags">${flavorTags}</div>
+         <button class="btn ghost contact-btn" data-nick="${esc(p.nick)}" style="margin-top:8px;font-size:13px;padding:5px 12px">💌 연락하기</button>
        </div>
        <div class="pct"><div class="n">${pct}%</div><div class="l">일치</div></div>`;
     matesEl.appendChild(div);
   });
+
+  // 연락하기 버튼 — 룸 채팅으로 쪽지 전송
+  matesEl.querySelectorAll(".contact-btn").forEach(btn => {
+    btn.onclick = () => {
+      const toNick = btn.dataset.nick;
+      if (!FIREBASE_ON || !chatRef) {
+        alert("Firebase 연결 시 채팅으로 연락할 수 있어요!\n(Firebase 설정 후 이용 가능)");
+        return;
+      }
+      const myNick = me.nick;
+      chatRef.push({
+        nick: myNick,
+        text: `💌 @${toNick}님, 저 ${myNick}인데 같이 밥 먹을래요? 😊`,
+        ts: Date.now()
+      });
+      // 채팅 탭으로 이동
+      const chatTab = document.querySelector('[data-panel="p-live"]');
+      if (chatTab) chatTab.click();
+    };
+  });
+
   return mates;
 }
 
