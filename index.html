@@ -151,6 +151,30 @@
   .resto .tag { font-size: 12px; font-weight: 600; color: var(--muted); background: #f6efe9; padding: 5px 10px; border-radius: 8px; }
   .resto .why { font-size: 13.5px; color: #6a5d54; margin-top: 10px; }
 
+  /* 토글: 메뉴 누르면 주변 실제 식당 펼침 */
+  .resto .resto-head { cursor: pointer; }
+  .resto .toggle-line {
+    display: flex; align-items: center; gap: 6px; margin-top: 12px;
+    font-size: 13.5px; font-weight: 700; color: var(--primary-d);
+    border-top: 1px dashed #ffe3da; padding-top: 11px;
+  }
+  .resto .toggle-line .chev { margin-left: auto; transition: transform .2s ease; font-size: 12px; }
+  .resto.open .toggle-line .chev { transform: rotate(180deg); }
+  .resto-detail.hidden { display: none; }
+  .resto-detail .note { font-size: 12.5px; color: var(--muted); margin: 10px 0 4px; }
+  .sub-resto {
+    display: flex; align-items: center; gap: 10px; padding: 11px 12px;
+    border: 1px solid var(--line); border-radius: 12px; background: #fff; margin-top: 8px;
+  }
+  .sub-resto .sr-ico { font-size: 21px; flex-shrink: 0; }
+  .sub-resto .sr-info { flex: 1; min-width: 0; }
+  .sub-resto .sr-nm { font-weight: 800; font-size: 14.5px; }
+  .sub-resto .sr-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .sub-resto .sr-map {
+    font-size: 12px; font-weight: 800; color: var(--primary-d); text-decoration: none;
+    white-space: nowrap; background: #fff1ea; padding: 6px 11px; border-radius: 999px;
+  }
+
   /* stats bars */
   .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 13px; }
   .bar-row .lbl { width: 92px; flex-shrink: 0; color: #6a5d54; font-weight: 600; }
@@ -257,9 +281,8 @@
       <div class="sect-title">🤝 나랑 잘 맞는 밥메이트</div>
       <div id="mates"></div>
 
-      <div class="sect-title">🍴 우리 그룹 추천 식당</div>
-      <button class="heart-btn" id="nearbyBtn" style="margin:0 0 12px;font-size:14px;padding:10px 18px">📍 내 주변 실제 식당 찾기</button>
-      <p class="hint" id="nearbyStatus" style="display:none;margin:0 0 12px"></p>
+      <div class="sect-title">🍴 우리 그룹 추천 메뉴</div>
+      <p class="hint" id="restoHint" style="margin:0 0 12px">메뉴를 누르면 📍 현재 위치 주변에서 그 메뉴를 파는 <b>실제 식당</b>을 찾아드려요!</p>
       <div id="restos"></div>
 
       <div class="sect-title">🔴 라이브 룸 — 실시간 전체 매칭</div>
@@ -346,20 +369,22 @@ const PEOPLE = [
   { nick:"불닭전사",   cats:["분식","중식","고기"],         spicy:5, budget:9000,  amount:2 },
 ];
 
-// ---- 학교 앞 식당 큐레이션 (가상) ----
-const RESTOS = [
-  { name:"불타는낙지",       cats:["한식"],            spicy:5, price:9000,  ico:"🌶️", desc:"매콤한 낙지볶음 한 그릇" },
-  { name:"가성비김밥천국",   cats:["분식","한식"],     spicy:2, price:6000,  ico:"🍙", desc:"뭐든 다 있는 만능 분식" },
-  { name:"청춘고깃집",       cats:["고기","한식"],     spicy:1, price:14000, ico:"🥩", desc:"점심 특선 삼겹살" },
-  { name:"모찌라멘",         cats:["일식","면류"],     spicy:2, price:9500,  ico:"🍜", desc:"진한 돈코츠 라멘" },
-  { name:"화룡짬뽕",         cats:["중식","면류"],     spicy:4, price:8000,  ico:"🥡", desc:"불맛 가득 짬뽕" },
-  { name:"파스타공방",       cats:["양식"],            spicy:1, price:13000, ico:"🍝", desc:"수제 오일·크림 파스타" },
-  { name:"든든백반",         cats:["한식"],            spicy:2, price:8000,  ico:"🍚", desc:"매일 바뀌는 집밥 백반" },
-  { name:"매운떡볶이연구소", cats:["분식"],            spicy:5, price:7000,  ico:"🌶️", desc:"중독성 있는 마라떡볶이" },
-  { name:"감성카페브런치",   cats:["카페/디저트","양식"], spicy:0, price:12000, ico:"☕", desc:"분위기 좋은 브런치" },
-  { name:"왕돈까스",         cats:["일식","양식"],     spicy:1, price:9000,  ico:"🍱", desc:"바삭한 등심 돈까스" },
-  { name:"마라공방",         cats:["중식"],            spicy:5, price:11000, ico:"🔥", desc:"얼얼한 마라탕·마라샹궈" },
-  { name:"샐러디브로",       cats:["샐러드/건강","양식"], spicy:0, price:9500, ico:"🥗", desc:"든든한 포케·샐러드" },
+// ---- 추천 메뉴(음식) 큐레이션 ----
+// 가상 식당이 아니라 "메뉴"를 추천한다. 토글을 펼치면 그 메뉴를 파는 주변 실제 식당이 나온다.
+// kw: 주변 실제 식당 이름 매칭용 키워드 (한국 식당명은 메뉴가 이름에 들어가는 경우가 많음)
+const MENUS = [
+  { name:"매운 낙지볶음",   cats:["한식"],            spicy:5, price:9000,  ico:"🌶️", desc:"칼칼하게 볶아낸 낙지 한 접시", kw:["낙지","쭈꾸미","주꾸미","해물","곱새"] },
+  { name:"김밥·분식 한상",   cats:["분식","한식"],     spicy:2, price:6000,  ico:"🍙", desc:"김밥·라면·떡볶이 가성비 조합", kw:["김밥","분식","떡볶이","라면","우동","돈까스"] },
+  { name:"삼겹살 구이",     cats:["고기","한식"],     spicy:1, price:14000, ico:"🥩", desc:"불판에 지글지글 구워 먹는 삼겹살", kw:["고기","삼겹","갈비","목살","구이","정육","고깃"] },
+  { name:"돈코츠 라멘",     cats:["일식","면류"],     spicy:2, price:9500,  ico:"🍜", desc:"진한 국물의 일본식 라멘", kw:["라멘","라면","우동","소바","돈코츠"] },
+  { name:"해물 짬뽕",       cats:["중식","면류"],     spicy:4, price:8000,  ico:"🥡", desc:"불맛 가득 얼큰한 해물 짬뽕", kw:["짬뽕","짜장","중화","탕수육","황궁"] },
+  { name:"크림 파스타",     cats:["양식"],            spicy:1, price:13000, ico:"🍝", desc:"부드러운 크림·오일 파스타", kw:["파스타","스파게티","피자","리조또","양식"] },
+  { name:"돼지 두루치기",   cats:["한식"],            spicy:3, price:8000,  ico:"🍚", desc:"매콤 짭짤한 두루치기에 공깃밥", kw:["두루치기","백반","국밥","찌개","곤드레","족발","집밥","기사식당","매운탕","곰탕","순대"] },
+  { name:"매운 떡볶이",     cats:["분식"],            spicy:5, price:7000,  ico:"🌶️", desc:"쫀득한 떡에 매콤한 양념", kw:["떡볶이","분식","순대","튀김","김밥"] },
+  { name:"브런치 플레이트", cats:["카페/디저트","양식"], spicy:0, price:12000, ico:"🥪", desc:"분위기 좋은 카페 브런치", kw:["카페","브런치","커피","디저트","베이커리","빵","꽈배기","핫도그"] },
+  { name:"등심 돈까스",     cats:["일식","양식"],     spicy:1, price:9000,  ico:"🍱", desc:"바삭하게 튀긴 두툼한 등심 돈까스", kw:["돈까스","돈가스","까스","경양식"] },
+  { name:"얼얼한 마라탕",   cats:["중식"],            spicy:5, price:11000, ico:"🔥", desc:"재료 골라 담는 얼얼한 마라탕", kw:["마라","마라탕","마라샹궈","훠궈","양꼬치"] },
+  { name:"포케·샐러드",     cats:["샐러드/건강","양식"], spicy:0, price:9500, ico:"🥗", desc:"든든하고 건강한 한 그릇", kw:["샐러드","포케","건강","다이어트","비건"] },
 ];
 
 // ---- 밥BTI 타입 정의 (우선순위 순으로 판정) ----
@@ -412,7 +437,7 @@ function similarity(a, b) {
   return { score, reason };
 }
 
-// ---- 그룹 취향 기반 식당 추천 ----
+// ---- 그룹 취향 기반 메뉴 추천 ----
 function recommendRestos(group) {
   const avgSpicy = group.reduce((s,p)=>s+p.spicy,0) / group.length;
   const avgBudget = group.reduce((s,p)=>s+p.budget,0) / group.length;
@@ -420,7 +445,7 @@ function recommendRestos(group) {
   const votes = {};
   group.forEach(p => p.cats.forEach(c => votes[c] = (votes[c]||0)+1));
 
-  const scored = RESTOS.map(r => {
+  const scored = MENUS.map(r => {
     const catScore = r.cats.reduce((s,c)=>s+(votes[c]||0),0) / group.length; // 0~
     const spicyScore = 1 - Math.abs(r.spicy - avgSpicy) / 5;
     const budgetScore = 1 - Math.abs(r.price - avgBudget) / 10000;
@@ -546,21 +571,33 @@ function renderRestos(me, matePeople) {
   const restosEl = document.getElementById("restos");
   restosEl.innerHTML = "";
   recs.forEach((r, i) => {
-    const div = document.createElement("div");
-    div.className = "resto";
-    div.innerHTML =
-      `<div class="top">
-         <span class="rico">${r.ico}</span>
-         <span class="rnm">${r.name}</span>
-         <span class="rank">${RANK[i]}</span>
+    const card = document.createElement("div");
+    card.className = "resto menu";
+    card.innerHTML =
+      `<div class="resto-head">
+         <div class="top">
+           <span class="rico">${r.ico}</span>
+           <span class="rnm">${r.name}</span>
+           <span class="rank">${RANK[i]}</span>
+         </div>
+         <div class="meta">
+           <span class="tag">${r.cats.join("·")}</span>
+           <span class="tag">🌶️ ${SPICY_LABEL[r.spicy]}</span>
+           <span class="tag">💰 ${r.price.toLocaleString()}원</span>
+         </div>
+         <div class="why">${r.desc} — 우리 그룹 취향이랑 잘 맞아요!</div>
+         <div class="toggle-line">📍 주변 실제 식당 보기 <span class="chev">▾</span></div>
        </div>
-       <div class="meta">
-         <span class="tag">${r.cats.join("·")}</span>
-         <span class="tag">🌶️ ${SPICY_LABEL[r.spicy]}</span>
-         <span class="tag">💰 ${r.price.toLocaleString()}원</span>
-       </div>
-       <div class="why">${r.desc} — 우리 그룹 취향이랑 잘 맞아요!</div>`;
-    restosEl.appendChild(div);
+       <div class="resto-detail hidden"></div>`;
+    const head = card.querySelector(".resto-head");
+    const detail = card.querySelector(".resto-detail");
+    head.onclick = () => {
+      const opening = detail.classList.contains("hidden");
+      detail.classList.toggle("hidden");
+      card.classList.toggle("open", opening);
+      if (opening && !detail.dataset.loaded) loadMenuRestos(r, detail);
+    };
+    restosEl.appendChild(card);
   });
 }
 
@@ -647,7 +684,8 @@ function renderCatStats(all) {
 }
 
 /* ====== 📍 GPS 현재 위치 기반 실제 식당 추천 (OpenStreetMap Overpass API) ====== */
-// 현재 결과 그룹(나 + 밥메이트)을 기억해 두고, 위치 검색 시 이 그룹 취향으로 랭킹
+// 추천 메뉴 토글을 펼치면, 현재 위치 주변에서 그 메뉴 카테고리에 맞는 실제 식당을 보여준다.
+// 위치/검색은 첫 토글 클릭 때 1회만 수행하고 캐시(nearbyData)해서 메뉴마다 재사용한다.
 let currentGroup = null;
 
 // OSM cuisine 태그 → 밥BTI 9개 카테고리 매핑
@@ -667,6 +705,18 @@ const CUISINE_MAP = {
 const CAT_ICON = {
   "한식":"🍚","중식":"🥡","일식":"🍱","양식":"🍝","분식":"🍙",
   "고기":"🥩","면류":"🍜","카페/디저트":"☕","샐러드/건강":"🥗"
+};
+// 카테고리별 식당 이름 키워드 (메뉴 고유 kw로 못 맞출 때의 폴백 매칭용)
+const CAT_KEYWORDS = {
+  "한식": ["한식","백반","국밥","찌개","찜","족발","보쌈","곤드레","비빔밥","칼국수","수제비","순대","해장","기사식당","쌈밥","낙지","두루치기","매운탕","닭갈비","닭발","곱창","곰탕","설렁탕","불고기","제육","곱새","감자탕","부대찌개","오리","장수","시골","개성","곤드레밥"],
+  "중식": ["중식","중화","짜장","짬뽕","마라","탕수육","양꼬치","훠궈","궁","황궁","차이","콰이"],
+  "일식": ["일식","초밥","스시","라멘","우동","돈부리","규동","사시미","오마카세","텐동","소바"],
+  "양식": ["양식","파스타","스파게티","피자","스테이크","리조또","버거","햄버거","브런치","경양식"],
+  "분식": ["분식","떡볶이","김밥","순대","튀김","핫도그","라면","꽈배기","호떡"],
+  "고기": ["고기","삼겹","갈비","목살","구이","정육","곱창","막창","닭갈비","치킨","강정","족발","오리","고깃","고기장수","닭강정"],
+  "면류": ["면","국수","라멘","우동","칼국수","파스타","짬뽕","쌀국수","냉면","소바","수타"],
+  "카페/디저트": ["카페","커피","디저트","베이커리","빵","브런치","케이크","브라운","빈스","방앗간","꽈배기","핫도그","도넛"],
+  "샐러드/건강": ["샐러드","포케","건강","다이어트","비건","채식"]
 };
 
 // 두 좌표 간 거리(m) — 하버사인
@@ -718,93 +768,119 @@ async function fetchNearbyRestos(lat, lon, radius) {
   return (json.elements || []).map(osmToResto).filter(Boolean);
 }
 
-// 그룹 취향 + 거리로 실제 식당 랭킹
-function rankRealRestos(group, list) {
-  const votes = {};
-  group.forEach(p => p.cats.forEach(c => votes[c] = (votes[c]||0)+1));
-  const maxDist = Math.max(...list.map(r => r.dist), 1);
-  return list.map(r => {
-    // 카테고리 점수(그룹 투표 비율). 카테고리 미상이면 작은 기본값
-    const catScore = r.cats.length
-      ? r.cats.reduce((s,c)=>s+(votes[c]||0),0) / group.length
-      : 0.15;
-    const distScore = 1 - r.dist / maxDist;           // 가까울수록 높음
-    const total = catScore*0.45 + distScore*0.45 + 0.10;
-    return { r, total };
-  }).sort((a,b)=>b.total-a.total);
+// 위치 1회 획득 + 주변 식당 캐시 (첫 토글 클릭 시 1번만 호출)
+const DEFAULT_LOC = { lat: 37.610787, lon: 126.996669, label: "국민대학교" };
+let nearbyData = null, nearbyLoading = null;
+
+// 좌표 기준 주변 식당 검색 (결과 캐시)
+function searchAround(lat, lon) {
+  if (nearbyData) return Promise.resolve(nearbyData);
+  if (nearbyLoading) return nearbyLoading;
+  nearbyLoading = fetchNearbyRestos(lat, lon, 1000).then(list => {
+    list.forEach(r => r.dist = haversine(lat, lon, r.lat, r.lon));
+    nearbyData = { origin: { lat, lon }, list };
+    return nearbyData;
+  }).catch(err => { nearbyLoading = null; throw err; });  // 실패 시 재시도 허용
+  return nearbyLoading;
 }
 
-// 실제 식당으로 추천 카드 렌더
-function renderRealRestos(group, list) {
-  const scored = rankRealRestos(group, list).slice(0, 4);
-  const el = document.getElementById("restos");
-  el.innerHTML = "";
-  scored.forEach((x, i) => {
-    const r = x.r;
-    const distTxt = r.dist < 1000
-      ? Math.round(r.dist) + "m"
-      : (r.dist/1000).toFixed(1) + "km";
-    const catTxt = r.cats.length ? r.cats.join("·")
-      : (r.rawCuisine ? esc(r.rawCuisine) : "음식점");
-    const mapUrl = "https://map.kakao.com/link/search/" + encodeURIComponent(r.name);
-    const div = document.createElement("div");
-    div.className = "resto";
-    div.innerHTML =
-      `<div class="top">
-         <span class="rico">${r.ico}</span>
-         <span class="rnm">${esc(r.name)}</span>
-         <span class="rank">${RANK[i] || (i+1)+"순위"}</span>
-       </div>
-       <div class="meta">
-         <span class="tag">${catTxt}</span>
-         <span class="tag">📍 ${distTxt}</span>
-         <span class="tag"><a href="${mapUrl}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">🗺️ 지도에서 보기</a></span>
-       </div>
-       <div class="why">현재 위치에서 ${distTxt} · 우리 그룹 취향과 매칭된 실제 식당이에요!</div>`;
-    el.appendChild(div);
+// 현재 GPS 위치로 주변 식당 검색 (이미 받아둔 게 있으면 재사용)
+function loadNearby() {
+  if (nearbyData) return Promise.resolve(nearbyData);
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject(new Error("unsupported"));
+    navigator.geolocation.getCurrentPosition(
+      pos => searchAround(pos.coords.latitude, pos.coords.longitude).then(resolve, reject),
+      reject,
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 }
+    );
   });
 }
 
-// 위치 권한 → 검색 → 렌더 흐름
-function findNearby() {
-  const status = document.getElementById("nearbyStatus");
-  const btn = document.getElementById("nearbyBtn");
-  status.style.display = "block";
+// 메뉴에 맞는 주변 식당 선별: 이름 키워드(강) > 카테고리 키워드(중) > cuisine 태그(중) > 거리
+function matchRestosForMenu(menu, list) {
+  const menuKw = menu.kw || [];
+  const catKw = [];
+  menu.cats.forEach(c => (CAT_KEYWORDS[c] || []).forEach(k => catKw.push(k)));
+  const menuCats = new Set(menu.cats);
 
-  if (!navigator.geolocation) {
-    status.textContent = "⚠️ 이 브라우저는 위치 기능을 지원하지 않아요.";
-    return;
-  }
-  status.textContent = "📍 현재 위치를 확인하는 중…";
-  btn.disabled = true;
+  const scored = list.map(r => {
+    let s = 0;
+    if (menuKw.some(k => r.name.includes(k))) s += 100;        // 메뉴 고유 키워드가 이름에
+    else if (catKw.some(k => r.name.includes(k))) s += 60;     // 카테고리 키워드가 이름에
+    if (r.cats.some(c => menuCats.has(c))) s += 40;            // cuisine 태그 카테고리 일치
+    return { r, s };
+  });
+  const matched = scored
+    .filter(x => x.s > 0)
+    .sort((a, b) => (b.s - a.s) || (a.r.dist - b.r.dist));
+  if (matched.length) return { items: matched.slice(0, 4).map(x => x.r), exact: true };
 
-  navigator.geolocation.getCurrentPosition(pos => {
-    const { latitude: lat, longitude: lon } = pos.coords;
-    status.textContent = "🍽️ 주변 식당을 검색하는 중…";
-    fetchNearbyRestos(lat, lon, 800).then(list => {
-      btn.disabled = false;
-      if (!list.length) {
-        status.innerHTML = "😅 주변에서 식당 데이터를 찾지 못했어요. <b>큐레이션 추천</b>을 그대로 보여드릴게요.";
-        return;
-      }
-      list.forEach(r => r.dist = haversine(lat, lon, r.lat, r.lon));
-      const group = currentGroup && currentGroup.length ? currentGroup : [];
-      status.innerHTML = `📍 현재 위치 기준 <b>${list.length}곳</b> 중 우리 그룹 취향과 가까운 곳을 추천했어요!`;
-      renderRealRestos(group, list);
-    }).catch(err => {
-      btn.disabled = false;
-      console.warn("주변 식당 검색 실패:", err);
-      status.textContent = "⚠️ 식당 검색에 실패했어요. 잠시 후 다시 시도해주세요. (큐레이션 추천은 그대로 표시돼요)";
-    });
-  }, err => {
-    btn.disabled = false;
-    status.textContent = err.code === 1
-      ? "🔒 위치 권한이 거부됐어요. 권한을 허용하면 주변 실제 식당을 찾아드려요."
-      : "⚠️ 현재 위치를 가져오지 못했어요. 잠시 후 다시 시도해주세요.";
-  }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+  // 폴백: 맞는 곳이 없으면 가장 가까운 식당
+  const nearest = list.slice().sort((a, b) => a.dist - b.dist).slice(0, 4);
+  return { items: nearest, exact: false };
 }
 
-document.getElementById("nearbyBtn").onclick = findNearby;
+// 식당 목록을 detail 패널에 렌더 (현재위치/폴백 공용)
+function renderMenuList(menu, list, detailEl, originLabel) {
+  if (!list.length) {
+    detailEl.innerHTML = `<p class="note">😅 주변에서 식당 데이터를 찾지 못했어요.</p>`;
+    return;
+  }
+  const { items, exact } = matchRestosForMenu(menu, list);
+  const where = originLabel ? ` (${originLabel} 기준)` : "";
+  const note = exact
+    ? `🍽️ <b>${menu.cats.join("·")}</b> 메뉴에 맞는 주변 실제 식당이에요${where}`
+    : `📍 딱 맞는 곳은 없어서, 가장 가까운 식당을 보여드려요${where}`;
+  detailEl.innerHTML = `<p class="note">${note}</p>` + items.map(r => {
+    const distTxt = r.dist < 1000 ? Math.round(r.dist) + "m" : (r.dist / 1000).toFixed(1) + "km";
+    const catTxt = r.cats.length ? r.cats.join("·") : (r.rawCuisine ? esc(r.rawCuisine) : "음식점");
+    const mapUrl = "https://map.kakao.com/link/search/" + encodeURIComponent(r.name);
+    return `<div class="sub-resto">
+      <span class="sr-ico">${r.ico}</span>
+      <div class="sr-info">
+        <div class="sr-nm">${esc(r.name)}</div>
+        <div class="sr-meta">${catTxt} · 📍 ${distTxt}</div>
+      </div>
+      <a class="sr-map" href="${mapUrl}" target="_blank" rel="noopener">🗺️ 지도</a>
+    </div>`;
+  }).join("");
+}
+
+// 토글 펼침 시: 위치 받아 해당 메뉴에 맞는 실제 식당 렌더
+function loadMenuRestos(menu, detailEl) {
+  detailEl.dataset.loaded = "1";
+  detailEl.innerHTML = `<p class="note">📍 현재 위치 주변에서 <b>${esc(menu.name)}</b>에 맞는 식당을 찾는 중…</p>`;
+  loadNearby()
+    .then(({ list }) => renderMenuList(menu, list, detailEl, null))
+    .catch(err => {
+      detailEl.dataset.loaded = "";  // 재시도 가능하게
+      let msg;
+      if (err && err.code === 1) msg = "🔒 위치 권한이 거부됐어요. 권한을 허용하고 다시 누르거나, 아래로 학교 기준 검색을 해보세요.";
+      else if (err && err.code === 2) msg = "📡 현재 위치를 확인할 수 없어요. (기기 위치 서비스가 꺼져 있을 수 있어요)";
+      else if (err && err.code === 3) msg = "⏱️ 위치 확인 시간이 초과됐어요. 다시 시도하거나 학교 기준으로 보세요.";
+      else if (err && err.message === "unsupported") msg = "⚠️ 위치 기능을 쓸 수 없어요. (HTTPS 또는 localhost 환경 필요 — file:// 직접 열기는 안 돼요)";
+      else if (err && /^Overpass/.test(String(err.message))) msg = "⚠️ 식당 데이터 서버 응답 오류예요. 잠시 후 다시 시도해주세요.";
+      else msg = "⚠️ 식당 검색에 실패했어요. 다시 눌러주세요.";
+      detailEl.innerHTML =
+        `<p class="note">${msg}</p>
+         <div class="sub-resto" data-fallback="1" style="cursor:pointer">
+           <span class="sr-ico">📍</span>
+           <div class="sr-info">
+             <div class="sr-nm">${DEFAULT_LOC.label} 주변으로 보기</div>
+             <div class="sr-meta">현재 위치 대신 학교 기준으로 검색</div>
+           </div>
+           <span class="sr-map">검색</span>
+         </div>`;
+      detailEl.querySelector("[data-fallback]").onclick = () => {
+        nearbyData = null; nearbyLoading = null;  // 학교 기준으로 새로 검색
+        detailEl.innerHTML = `<p class="note">📍 ${DEFAULT_LOC.label} 주변에서 찾는 중…</p>`;
+        searchAround(DEFAULT_LOC.lat, DEFAULT_LOC.lon)
+          .then(({ list }) => renderMenuList(menu, list, detailEl, DEFAULT_LOC.label))
+          .catch(() => { detailEl.innerHTML = `<p class="note">⚠️ 검색에 실패했어요. 잠시 후 다시 시도해주세요.</p>`; });
+      };
+    });
+}
 
 /* ====== 라이브 룸 (Firebase Realtime DB) ====== */
 let roomRef = null;
