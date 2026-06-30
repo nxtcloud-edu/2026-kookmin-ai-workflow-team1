@@ -1622,10 +1622,8 @@ function joinRoom(me) {
 
   // 룸 생성자(host) 등록 — 처음 들어온 사람만 host가 됨
   const hostRef = db.ref("rooms/" + code + "/host");
-  hostRef.transaction(current => current === null ? me.nick : current);
-
-  // host인 경우에만 룸 비우기 버튼 표시
-  hostRef.once("value", snap => {
+  hostRef.transaction(current => current === null ? me.nick : current, (err, committed, snap) => {
+    if (err || !snap) return;
     const host = snap.val();
     if (resetBtn && host === me.nick) {
       resetBtn.style.display = "inline-block";
