@@ -773,24 +773,25 @@ ${matesDesc}
 
 /* ============== UI 로직 ============== */
 let selectedDishes = new Set();   // 선택한 세부 음식 이름
+let selectedCatsManual = new Set(); // 분류 칩에서 직접 선택한 카테고리
 let selectedCats = new Set();     // 매핑된 카테고리 (매칭/통계/추천에 사용)
 let openCat = null;               // 현재 펼친 분류
 let amount = 1;
 
-// 선택한 세부 음식 → 카테고리 집합 재계산
+// 직접 선택한 분류 + 세부 음식에서 파생된 분류 합산
 function recomputeCats() {
-  selectedCats = new Set();
+  selectedCats = new Set([...selectedCatsManual]);
   DISHES.forEach(d => { if (selectedDishes.has(d.name)) selectedCats.add(d.cat); });
 }
 
 const catChips = document.getElementById("catChips");
 const dishPanel = document.getElementById("dishPanel");
 
-// 분류 칩: 펼쳐져 있거나(open) 선택된 메뉴가 있으면 강조
+// 분류 칩: 직접 선택됐거나, 세부 음식이 선택됐거나, 펼쳐져 있으면 강조
 function refreshCatChips() {
   catChips.querySelectorAll(".chip").forEach(el => {
     const cat = el.dataset.cat;
-    const hasSel = DISHES.some(d => d.cat === cat && selectedDishes.has(d.name));
+    const hasSel = selectedCatsManual.has(cat) || DISHES.some(d => d.cat === cat && selectedDishes.has(d.name));
     el.classList.toggle("on", cat === openCat || hasSel);
   });
 }
@@ -821,7 +822,17 @@ CATS.forEach(cat => {
   el.textContent = cat;
   el.dataset.cat = cat;
   el.onclick = () => {
-    openCat = (openCat === cat) ? null : cat;  // 같은 분류 다시 누르면 닫힘
+    if (openCat === cat) {
+      // 같은 분류 다시 누르면 닫힘 + 세부 음식 없으면 선택 취소
+      openCat = null;
+      if (!DISHES.some(d => d.cat === cat && selectedDishes.has(d.name))) {
+        selectedCatsManual.delete(cat);
+      }
+    } else {
+      openCat = cat;
+      selectedCatsManual.add(cat);  // 분류 클릭만으로도 선택
+    }
+    recomputeCats();
     renderDishPanel();
     refreshCatChips();
   };
@@ -989,11 +1000,9 @@ function saveUserPrefs(me) {
 function fillFormFromData(data) {
   const cats = Array.isArray(data.cats) ? data.cats : Object.values(data.cats || {});
   const dishes = Array.isArray(data.dishes) ? data.dishes : Object.values(data.dishes || {});
+  cats.forEach(cat => selectedCatsManual.add(cat));  // 저장된 분류 복원
   if (dishes.length) {
     dishes.forEach(name => selectedDishes.add(name));
-  } else {
-    // 구버전(카테고리만 저장됨) → 각 카테고리의 첫 대표 음식 선택
-    cats.forEach(cat => { const f = DISHES.find(d => d.cat === cat); if (f) selectedDishes.add(f.name); });
   }
   recomputeCats();
   refreshCatChips();
