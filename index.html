@@ -438,6 +438,50 @@
     .rn-item { white-space: nowrap; padding: 9px 14px; font-size: 13.5px; width: auto; }
     .rn-dot { display: none; }
   }
+  /* ===== 모바일 공통 보강 ===== */
+  @media (max-width:600px) {
+    /* 가로 스크롤 방지 */
+    body { overflow-x:hidden; }
+    .wrap { padding:0 14px 80px; }
+
+    /* 히어로 */
+    .hero { padding:36px 16px 32px; }
+
+    /* 슬라이더 값 박스 — 최소 너비 축소 */
+    .slider-val { min-width:76px; font-size:12.5px; }
+
+    /* 밥메이트 카드 */
+    .mate { gap:10px; padding:13px; }
+    .mate .av { width:40px; height:40px; font-size:20px; }
+    .mate .pct .n { font-size:18px; }
+
+    /* 연락하기 버튼 — 카드 안 버튼 전체 너비 */
+    .contact-btn { width:100%; text-align:center; }
+
+    /* 식당 카드 지도 버튼 — 줄 바꿈 허용 */
+    .sub-resto { flex-wrap:wrap; }
+    .sub-resto .sr-map { margin-top:8px; width:100%; text-align:center; }
+
+    /* 재방문 배너 */
+    .return-banner { flex-direction:column; align-items:flex-start; gap:10px; }
+    #returnPrompt .ret-actions { flex-direction:column; }
+    .ret-primary-btn, .ret-ghost-btn { width:100%; }
+
+    /* 탭 네비 */
+    .rn-item { font-size:12.5px; padding:8px 11px; }
+
+    /* 채팅 입력 — iOS 줌 방지 */
+    #chatInput, input[type="text"], input[type="password"] { font-size:16px; }
+
+    /* DM 모달 — 바텀시트로 */
+    #dmBox { border-radius:20px 20px 0 0; width:100%; position:fixed; bottom:0; max-height:85vh; }
+    #dmOverlay.open { align-items:flex-end; }
+  }
+  @media (max-width:380px) {
+    .seg { grid-template-columns:repeat(2,1fr); }
+    .chip { font-size:12.5px; padding:7px 12px; }
+    .mate-tags .tag { font-size:10.5px; }
+  }
   /* DM 모달 */
   #dmOverlay {
     display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
