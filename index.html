@@ -177,6 +177,19 @@
 
   footer { text-align: center; color: #c4b8af; font-size: 12.5px; margin-top: 40px; }
 
+  /* 실시간 동기화 뱃지 */
+  .sync-badge {
+    font-size: 12px; font-weight: 700; color: var(--good);
+    background: #e8f8f0; padding: 3px 10px; border-radius: 999px;
+    display: inline-flex; align-items: center; gap: 4px;
+    opacity: 0; transition: opacity .3s; vertical-align: middle;
+  }
+  .sync-badge.show { opacity: 1; }
+  .sync-badge.syncing { color: #b07800; background: #fff3cc; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .sync-spin { display: none; }
+  .sync-badge.syncing .sync-spin { display: inline-block; animation: spin .7s linear infinite; }
+
   @media (max-width: 480px) {
     .hero h1 { font-size: 33px; }
     .seg { grid-template-columns: repeat(3, 1fr); }
@@ -254,7 +267,7 @@
         <div class="tnick" id="typeNick"></div>
       </div>
 
-      <div class="sect-title">🤝 나랑 잘 맞는 밥메이트</div>
+      <div class="sect-title">🤝 나랑 잘 맞는 밥메이트 <span class="sync-badge" id="syncBadge"><span class="sync-spin">🔄</span><span id="syncText"></span></span></div>
       <div id="mates"></div>
 
       <div class="sect-title">🍴 우리 그룹 추천 식당</div>
@@ -482,6 +495,10 @@ document.getElementById("submitBtn").onclick = () => {
 };
 
 document.getElementById("retryBtn").onclick = () => {
+  if (FIREBASE_ON && participantsListener) {
+    db.ref("participants").off("value", participantsListener);
+    participantsListener = null;
+  }
   document.getElementById("result").style.display = "none";
   document.getElementById("form").scrollIntoView();
 };
@@ -511,6 +528,20 @@ document.getElementById("heartBtn").onclick = function() {
 /* ============== 결과 렌더 ============== */
 const AVATARS = ["🦊","🐻","🐰","🐼","🐱","🐯","🐧","🦁","🐨"];
 const RANK = ["1순위","2순위","3순위"];
+
+let participantsListener = null;
+let syncTimer = null;
+
+function showSyncBadge(count) {
+  const badge = document.getElementById("syncBadge");
+  document.getElementById("syncText").textContent = "업데이트 중...";
+  badge.className = "sync-badge show syncing";
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    badge.className = "sync-badge show";
+    document.getElementById("syncText").textContent = `실시간 ${count}명 반영`;
+  }, 800);
+}
 
 function renderMates(me, pool, realNicks) {
   const ranked = pool
@@ -590,10 +621,13 @@ function renderResult(me) {
   res.style.display = "block";
   res.scrollIntoView({ behavior:"smooth" });
 
-  // Firebase 참여자 저장 + 실제 데이터로 재렌더
+  // Firebase 참여자 저장 + 실시간 리스너로 지속 반영
   saveParticipant(me);
   if (FIREBASE_ON) {
-    db.ref("participants").once("value", snap => {
+    if (participantsListener) {
+      db.ref("participants").off("value", participantsListener);
+    }
+    participantsListener = db.ref("participants").on("value", snap => {
       const data = snap.val();
       if (!data) return;
       const realPeople = Object.values(data).filter(p => p.nick !== me.nick);
@@ -604,6 +638,7 @@ function renderResult(me) {
       renderRestos(me, newMates.map(m => m.p));
       renderSpicyStats([me, ...realPeople, ...PEOPLE]);
       renderCatStats([me, ...realPeople, ...PEOPLE]);
+      showSyncBadge(realPeople.length);
     });
   }
 }
