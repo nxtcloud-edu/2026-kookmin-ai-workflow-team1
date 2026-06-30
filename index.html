@@ -1734,11 +1734,17 @@ function joinRoom(me) {
     const val = snap.val() || {};
     const now = Date.now();
     // 10분(600000ms) 이상 지난 좀비 참여자 필터링
-    const members = Object.values(val)
+    const raw = Object.values(val)
       .filter(m => !m.ts || now - m.ts < 600000)
       .map(m => ({
         ...m, cats: Array.isArray(m.cats) ? m.cats : Object.values(m.cats || {})
       }));
+    // 같은 닉네임 중복 제거 — 재제출 시 최신 ts 기준으로 1명만 유지
+    const seen = new Map();
+    raw.forEach(m => {
+      if (!seen.has(m.nick) || (m.ts || 0) > (seen.get(m.nick).ts || 0)) seen.set(m.nick, m);
+    });
+    const members = [...seen.values()];
     renderLive(members, code);
   });
 
