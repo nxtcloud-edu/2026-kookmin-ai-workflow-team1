@@ -316,6 +316,14 @@
     transition:background .1s, border-color .1s;
   }
   .room-enter-btn:hover { background:#fff3ef; border-color:var(--primary); color:var(--primary); }
+  .share-result-btn {
+    margin-top:14px; width:100%; background:rgba(255,255,255,.15);
+    color:#fff; border:1.5px solid rgba(255,255,255,.45); border-radius:999px;
+    padding:9px 0; font-size:13px; font-weight:700; cursor:pointer;
+    font-family:inherit; transition:background .15s;
+  }
+  .share-result-btn:hover { background:rgba(255,255,255,.28); }
+  .share-result-btn:active { opacity:.8; }
 
   @media (max-width:480px) {
     .hero h1 { font-size:42px; letter-spacing:-2px; }
@@ -469,6 +477,7 @@
         <div class="tname" id="typeName">밸런스 미식가</div>
         <div class="tdesc" id="typeDesc"></div>
         <div class="tnick" id="typeNick"></div>
+        <button class="share-result-btn" id="shareResultBtn" onclick="shareResult()">🔗 내 밥BTI 공유하기</button>
       </div>
 
       <div class="sect-title">🤝 나랑 잘 맞는 밥메이트 <span class="sync-badge" id="syncBadge"><span class="sync-spin">🔄</span><span id="syncText"></span></span></div>
@@ -1627,9 +1636,28 @@ function joinRoom(me) {
   }
 }
 
+function shareResult() {
+  const type  = document.getElementById("typeName").textContent;
+  const emoji = document.getElementById("typeEmoji").textContent;
+  const url   = "http://kmu-agent-46-babbti-s3.s3-website-us-east-1.amazonaws.com";
+  const text  = `나는 ${emoji} ${type}!\n오늘 점심 누구랑 뭐 먹을지 취향으로 맞춰봐요 🍚\n👉 밥BTI 해보기: ${url}`;
+  const btn   = document.getElementById("shareResultBtn");
+
+  if (navigator.share) {
+    navigator.share({ title: "밥BTI 결과", text, url }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        btn.textContent = "✅ 복사됐어요! 친구한테 보내줘요";
+        setTimeout(() => btn.textContent = "🔗 내 밥BTI 공유하기", 2500);
+      })
+      .catch(() => prompt("복사해서 공유하세요:", text));
+  }
+}
+
 function renderLive(members, code) {
   document.getElementById("liveStatus").innerHTML =
-    `📍 룸 <b>${code}</b> · 지금 <b>${members.length}명</b> 참여 중`;
+    `📍 룸 <b>${code}</b> · 지금 <b>${members.length}명</b> 참여 중 <button class="copy-code-btn" onclick="copyRoomCode('${esc(code)}')">📋 코드 복사</button>`;
 
   const el = document.getElementById("liveGroups");
   if (members.length < 2) {
