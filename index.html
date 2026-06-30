@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>밥BTI — 취향 기반 밥약 매칭</title>
+<meta name="description" content="음식 취향을 입력하면 가장 잘 맞는 밥메이트와 식당을 찾아주는 취향 매칭 서비스" />
+<link rel="preconnect" href="https://cdn.jsdelivr.net" />
+<link rel="stylesheet" as="style" crossorigin
+  href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<style>
+  :root {
+    --bg: #fff8f2;
+    --card: #ffffff;
+    --ink: #2a2320;
+    --muted: #8a7d74;
+    --line: #f0e4da;
+    --primary: #ff5a3c;
+    --primary-d: #e63e22;
+    --accent: #ffb340;
+    --good: #2bb673;
+    --shadow: 0 10px 30px rgba(230,62,34,.10);
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", "Malgun Gothic", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 18px 80px; }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    text-align: center;
+    padding: 56px 18px 40px;
+    background:
+      radial-gradient(120% 90% at 50% -10%, #ffe7d6 0%, rgba(255,231,214,0) 60%),
+      var(--bg);
+  }
+  .badge {
+    display: inline-block; font-size: 13px; font-weight: 700; color: var(--primary-d);
+    background: #ffe3da; padding: 6px 14px; border-radius: 999px; margin-bottom: 16px;
+  }
+  .hero h1 { font-size: 40px; font-weight: 800; letter-spacing: -1px; line-height: 1.15; }
+  .hero h1 .grad {
+    background: linear-gradient(100deg, var(--primary), var(--accent));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p { color: var(--muted); margin-top: 14px; font-size: 16px; }
+  .hero .sub { margin-top: 6px; font-size: 14px; color: #b3a79e; }
+
+  /* ---------- Card ---------- */
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 24px; margin-top: 22px; box-shadow: var(--shadow);
+  }
+  .card h2 { font-size: 19px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .card .hint { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+  .field { margin-top: 22px; }
+  .field > label { font-weight: 700; font-size: 15px; display: block; margin-bottom: 10px; }
+  .field .desc { font-weight: 400; color: var(--muted); font-size: 13px; margin-left: 6px; }
+
+  input[type="text"] {
+    width: 100%; padding: 13px 15px; border: 1.5px solid var(--line); border-radius: 12px;
+    font-size: 15px; font-family: inherit; background: #fffdfb; color: var(--ink);
+  }
+  input[type="text"]:focus { outline: none; border-color: var(--primary); }
+
+  /* chips */
+  .chips { display: flex; flex-wrap: wrap; gap: 9px; }
+  .chip {
+    border: 1.5px solid var(--line); background: #fffdfb; color: var(--ink);
+    padding: 9px 15px; border-radius: 999px; font-size: 14px; font-weight: 600;
+    cursor: pointer; user-select: none; transition: all .12s ease;
+  }
+  .chip:hover { border-color: #ffd2c6; }
+  .chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+  /* slider */
+  .slider-row { display: flex; align-items: center; gap: 14px; }
+  input[type="range"] { flex: 1; accent-color: var(--primary); height: 6px; }
+  .slider-val {
+    min-width: 86px; text-align: center; font-weight: 700; font-size: 14px;
+    background: #fff1ea; color: var(--primary-d); padding: 7px 8px; border-radius: 10px;
+  }
+
+  /* segmented */
+  .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+  .seg .chip { text-align: center; }
+
+  .btn {
+    width: 100%; margin-top: 28px; padding: 16px; border: none; border-radius: 14px;
+    background: linear-gradient(100deg, var(--primary), var(--primary-d)); color: #fff;
+    font-size: 17px; font-weight: 800; font-family: inherit; cursor: pointer;
+    box-shadow: 0 8px 20px rgba(230,62,34,.28); transition: transform .08s ease;
+  }
+  .btn:active { transform: scale(.985); }
+  .btn.ghost {
+    background: #fff; color: var(--primary-d); border: 1.5px solid #ffd2c6;
+    box-shadow: none; margin-top: 14px;
+  }
+  .err { color: var(--primary-d); font-size: 13.5px; font-weight: 600; margin-top: 12px; display: none; }
+
+  /* ---------- Result ---------- */
+  #result { display: none; }
+  .type-card {
+    text-align: center; color: #fff; border-radius: var(--radius); padding: 30px 22px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    box-shadow: var(--shadow);
+  }
+  .type-card .emoji { font-size: 60px; line-height: 1; }
+  .type-card .tname { font-size: 27px; font-weight: 800; margin-top: 10px; letter-spacing: -.5px; }
+  .type-card .tdesc { font-size: 14.5px; opacity: .95; margin-top: 10px; }
+  .type-card .tnick { font-size: 13px; opacity: .85; margin-top: 14px; font-weight: 600; }
+
+  .sect-title { font-size: 16px; font-weight: 800; margin: 26px 0 12px; display: flex; align-items: center; gap: 7px; }
+
+  .mate {
+    display: flex; align-items: center; gap: 14px; padding: 14px;
+    border: 1px solid var(--line); border-radius: 14px; margin-bottom: 10px; background: #fffdfb;
+  }
+  .mate .av {
+    width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0;
+    display: grid; place-items: center; font-size: 22px; background: #fff1ea;
+  }
+  .mate .info { flex: 1; min-width: 0; }
+  .mate .info .nm { font-weight: 800; font-size: 15.5px; }
+  .mate .info .rs { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .mate .pct {
+    text-align: center; flex-shrink: 0;
+  }
+  .mate .pct .n { font-size: 20px; font-weight: 800; color: var(--primary-d); }
+  .mate .pct .l { font-size: 11px; color: var(--muted); }
+
+  .resto {
+    padding: 16px; border: 1.5px solid #ffe3da; border-radius: 14px; margin-bottom: 10px;
+    background: linear-gradient(180deg, #fff8f4, #fff);
+  }
+  .resto .top { display: flex; align-items: center; gap: 10px; }
+  .resto .top .rico { font-size: 26px; }
+  .resto .top .rnm { font-weight: 800; font-size: 16px; }
+  .resto .top .rank { margin-left: auto; font-size: 12px; font-weight: 800; color: #fff;
+    background: var(--primary); padding: 4px 10px; border-radius: 999px; }
+  .resto .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .resto .tag { font-size: 12px; font-weight: 600; color: var(--muted); background: #f6efe9; padding: 5px 10px; border-radius: 8px; }
+  .resto .why { font-size: 13.5px; color: #6a5d54; margin-top: 10px; }
+
+  /* stats bars */
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 13px; }
+  .bar-row .lbl { width: 92px; flex-shrink: 0; color: #6a5d54; font-weight: 600; }
+  .bar-track { flex: 1; background: #f3eae3; border-radius: 999px; height: 18px; overflow: hidden; }
+  .bar-fill {
+    display: block; height: 100%; border-radius: 999px; width: 0;
+    background: linear-gradient(90deg, var(--accent), var(--primary));
+    transition: width .7s cubic-bezier(.2,.8,.2,1);
+  }
+  .bar-row .cnt { width: 30px; text-align: right; color: var(--muted); font-weight: 700; }
+
+  .vote {
+    text-align: center; margin-top: 26px; padding: 22px; border: 1px dashed #ffd2c6;
+    border-radius: var(--radius); background: #fff8f4;
+  }
+  .vote p { font-size: 14.5px; color: #6a5d54; }
+  .heart-btn {
+    margin-top: 14px; font-size: 16px; font-weight: 800; cursor: pointer;
+    border: none; background: #fff; color: var(--primary-d); border: 1.5px solid #ffd2c6;
+    padding: 12px 26px; border-radius: 999px; font-family: inherit; transition: all .12s;
+  }
+  .heart-btn:active { transform: scale(.95); }
+  .heart-btn.liked { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  footer { text-align: center; color: #c4b8af; font-size: 12.5px; margin-top: 40px; }
+
+  @media (max-width: 480px) {
+    .hero h1 { font-size: 33px; }
+    .seg { grid-template-columns: repeat(3, 1fr); }
+    .card { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+  <header class="hero">
+    <span class="badge">🍚 취향 기반 밥약 매칭</span>
+    <h1>오늘 점심, <span class="grad">누구랑 뭐 먹지?</span></h1>
+    <p>음식 취향 30초만 입력하면<br/>가장 잘 맞는 <b>밥메이트</b>와 <b>식당</b>을 찾아줘요.</p>
+    <p class="sub">— 우리 학과 단톡방 15명과 즉석 매칭 —</p>
+  </header>
+
+  <main class="wrap">
+
+    <!-- ============ 입력 폼 ============ -->
+    <section class="card" id="form">
+      <h2>🙋 내 취향 입력하기</h2>
+      <p class="hint">정답은 없어요. 끌리는 대로 골라주세요!</p>
+
+      <div class="field">
+        <label>🔴 라이브 룸 코드 <span class="desc">같은 코드끼리 실시간 매칭</span></label>
+        <input type="text" id="room" placeholder="예) CS21" value="lunch" maxlength="16" />
+      </div>
+
+      <div class="field">
+        <label>닉네임</label>
+        <input type="text" id="nick" placeholder="예) 점심요정" maxlength="12" />
+      </div>
+
+      <div class="field">
+        <label>좋아하는 음식 <span class="desc">여러 개 선택 가능</span></label>
+        <div class="chips" id="catChips"></div>
+      </div>
+
+      <div class="field">
+        <label>매운맛 선호도</label>
+        <div class="slider-row">
+          <input type="range" id="spicy" min="0" max="5" step="1" value="2" />
+          <span class="slider-val" id="spicyVal"></span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>한 끼 예산</label>
+        <div class="slider-row">
+          <input type="range" id="budget" min="6000" max="16000" step="1000" value="10000" />
+          <span class="slider-val" id="budgetVal"></span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>식사량</label>
+        <div class="seg" id="amountSeg">
+          <div class="chip" data-amount="0">🐤 소식</div>
+          <div class="chip on" data-amount="1">🙂 보통</div>
+          <div class="chip" data-amount="2">🍚 대식</div>
+        </div>
+      </div>
+
+      <button class="btn" id="submitBtn">🔍 내 밥메이트 찾기</button>
+      <p class="err" id="err">⚠️ 닉네임을 입력하고 음식을 1개 이상 골라주세요!</p>
+    </section>
+
+    <!-- ============ 결과 ============ -->
+    <section id="result">
+
+      <div class="type-card" id="typeCard">
+        <div class="emoji" id="typeEmoji">🍲</div>
+        <div class="tname" id="typeName">밸런스 미식가</div>
+        <div class="tdesc" id="typeDesc"></div>
+        <div class="tnick" id="typeNick"></div>
+      </div>
+
+      <div class="sect-title">🤝 나랑 잘 맞는 밥메이트</div>
+      <div id="mates"></div>
+
+      <div class="sect-title">🍴 우리 그룹 추천 식당</div>
+      <div id="restos"></div>
+
+      <div class="sect-title">🔴 라이브 룸 — 실시간 전체 매칭</div>
+      <div class="card" style="margin-top:0">
+        <p class="hint" id="liveStatus" style="font-weight:700;color:var(--ink)">실시간 룸에 연결 중…</p>
+        <div id="liveGroups"></div>
+        <button class="heart-btn" id="resetRoomBtn" style="margin-top:14px;font-size:13px;padding:8px 16px;display:none">🗑️ 룸 비우기</button>
+      </div>
+
+      <div class="sect-title">📊 우리 반 취향 통계</div>
+      <div class="card" style="margin-top:0">
+        <p class="hint" style="margin-bottom:14px;font-weight:700;color:var(--ink)">🌶️ 매운맛 분포</p>
+        <div id="spicyStats"></div>
+        <p class="hint" style="margin:18px 0 14px;font-weight:700;color:var(--ink)">🍽️ 인기 음식 TOP</p>
+        <div id="catStats"></div>
+      </div>
+
+      <div class="vote">
+        <p><b>이 매칭, 마음에 들어요?</b><br/>마음에 들면 하트를 눌러주세요 💕</p>
+        <button class="heart-btn" id="heartBtn">🤍 좋아요 <span id="likeCount">0</span></button>
+      </div>
+
+      <button class="btn ghost" id="retryBtn">↩️ 다시 해보기</button>
+    </section>
+
+    <footer>
+      밥BTI · AWS 부트캠프 팀 프로젝트 · 취향 데이터 기반 매칭 데모
+    </footer>
+  </main>
+
+<!-- Firebase (Realtime Database) — 실시간 룸 매칭용 -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+  /* ★ 여기에 본인 Firebase 프로젝트 설정을 붙여넣으세요 (콘솔 > 프로젝트 설정 > 웹앱) ★
+     설정 안 하면 자동으로 '단일 기기 데모 모드'로 동작합니다. */
+  const firebaseConfig = {
+    apiKey:      "PASTE_API_KEY",
+    authDomain:  "PASTE.firebaseapp.com",
+    databaseURL: "https://PASTE-default-rtdb.firebaseio.com",
+    projectId:   "PASTE",
+    appId:       "PASTE_APP_ID"
+  };
+  let db = null, FIREBASE_ON = false;
+  try {
+    if (!firebaseConfig.apiKey.startsWith("PASTE")) {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.database();
+      FIREBASE_ON = true;
+    }
+  } catch (e) { console.warn("Firebase 초기화 실패:", e); }
+</script>
+
+<script>
+/* =========================================================
+   밥BTI — 취향 기반 밥약 매칭 (클라이언트 사이드 데모)
+   - 입력: 음식 카테고리(멀티핫) + 매운맛 + 예산 + 식사량
+   - 매칭: 항목별 유사도 가중합 (설명 가능한 "취향 벡터 유사도")
+   - 결과: 밥BTI 타입 + 밥메이트 + 식당 추천 + 반 통계
+   ========================================================= */
+
+// ---- 음식 카테고리 정의 ----
+const CATS = ["한식","중식","일식","양식","분식","고기","면류","카페/디저트","샐러드/건강"];
+
+// ---- 가상 학과 단톡방 15명 (데모 샘플 데이터) ----
+// cats: 선호 카테고리 / spicy 0~5 / budget 원 / amount 0~2
+const PEOPLE = [
+  { nick:"매운불꽃",   cats:["한식","분식","중식"],         spicy:5, budget:8000,  amount:2 },
+  { nick:"가성비킹",   cats:["분식","한식","면류"],         spicy:2, budget:6000,  amount:1 },
+  { nick:"고기사랑",   cats:["고기","한식"],               spicy:1, budget:14000, amount:2 },
+  { nick:"라멘덕후",   cats:["일식","면류"],               spicy:2, budget:10000, amount:1 },
+  { nick:"감성브런치", cats:["카페/디저트","양식"],         spicy:0, budget:13000, amount:0 },
+  { nick:"마라중독",   cats:["중식","고기"],               spicy:5, budget:11000, amount:2 },
+  { nick:"파스타요정", cats:["양식","카페/디저트"],         spicy:1, budget:13000, amount:1 },
+  { nick:"백반러버",   cats:["한식","면류"],               spicy:2, budget:8000,  amount:1 },
+  { nick:"떡볶이요정", cats:["분식"],                      spicy:5, budget:7000,  amount:1 },
+  { nick:"헬시푸드",   cats:["샐러드/건강","일식"],         spicy:0, budget:10000, amount:0 },
+  { nick:"돈까스맨",   cats:["일식","양식","고기"],         spicy:1, budget:9000,  amount:2 },
+  { nick:"잡식탐험가", cats:["한식","중식","일식","양식"],   spicy:3, budget:11000, amount:1 },
+  { nick:"국물요정",   cats:["면류","한식","일식"],         spicy:3, budget:9000,  amount:1 },
+  { nick:"디저트킹",   cats:["카페/디저트"],               spicy:0, budget:12000, amount:0 },
+  { nick:"불닭전사",   cats:["분식","중식","고기"],         spicy:5, budget:9000,  amount:2 },
+];
+
+// ---- 학교 앞 식당 큐레이션 (가상) ----
+const RESTOS = [
+  { name:"불타는낙지",       cats:["한식"],            spicy:5, price:9000,  ico:"🌶️", desc:"매콤한 낙지볶음 한 그릇" },
+  { name:"가성비김밥천국",   cats:["분식","한식"],     spicy:2, price:6000,  ico:"🍙", desc:"뭐든 다 있는 만능 분식" },
+  { name:"청춘고깃집",       cats:["고기","한식"],     spicy:1, price:14000, ico:"🥩", desc:"점심 특선 삼겹살" },
+  { name:"모찌라멘",         cats:["일식","면류"],     spicy:2, price:9500,  ico:"🍜", desc:"진한 돈코츠 라멘" },
+  { name:"화룡짬뽕",         cats:["중식","면류"],     spicy:4, price:8000,  ico:"🥡", desc:"불맛 가득 짬뽕" },
+  { name:"파스타공방",       cats:["양식"],            spicy:1, price:13000, ico:"🍝", desc:"수제 오일·크림 파스타" },
+  { name:"든든백반",         cats:["한식"],            spicy:2, price:8000,  ico:"🍚", desc:"매일 바뀌는 집밥 백반" },
+  { name:"매운떡볶이연구소", cats:["분식"],            spicy:5, price:7000,  ico:"🌶️", desc:"중독성 있는 마라떡볶이" },
+  { name:"감성카페브런치",   cats:["카페/디저트","양식"], spicy:0, price:12000, ico:"☕", desc:"분위기 좋은 브런치" },
+  { name:"왕돈까스",         cats:["일식","양식"],     spicy:1, price:9000,  ico:"🍱", desc:"바삭한 등심 돈까스" },
+  { name:"마라공방",         cats:["중식"],            spicy:5, price:11000, ico:"🔥", desc:"얼얼한 마라탕·마라샹궈" },
+  { name:"샐러디브로",       cats:["샐러드/건강","양식"], spicy:0, price:9500, ico:"🥗", desc:"든든한 포케·샐러드" },
+];
+
+// ---- 밥BTI 타입 정의 (우선순위 순으로 판정) ----
+function decideType(u) {
+  const has = c => u.cats.includes(c);
+  if (u.spicy >= 4)
+    return { emoji:"🔥", name:"매운맛 헌터", desc:"맵지 않으면 밍밍하죠. 캡사이신이 곧 행복인 당신!" };
+  if (u.cats.length >= 4)
+    return { emoji:"🌏", name:"잡식 탐험가", desc:"가리는 거 없이 다 좋아! 새로운 메뉴엔 늘 진심인 당신." };
+  if (u.budget <= 7000)
+    return { emoji:"💸", name:"가성비 미식가", desc:"맛도 지갑도 포기 못 해. 가성비 맛집을 귀신같이 찾는 당신." };
+  if (has("카페/디저트"))
+    return { emoji:"🕯️", name:"분위기파", desc:"맛만큼 분위기도 중요! 예쁜 카페·브런치를 사랑하는 당신." };
+  if (has("고기"))
+    return { emoji:"🥩", name:"육식파", desc:"밥약의 끝은 결국 고기. 든든하게 채워야 직성이 풀리는 당신." };
+  if (has("면류") && has("한식"))
+    return { emoji:"🍜", name:"국물 한식파", desc:"따끈한 국물 한 그릇이면 세상 부러울 게 없는 당신." };
+  if (u.amount === 2)
+    return { emoji:"🍚", name:"대식가", desc:"양이 곧 정의! 푸짐하게 먹어야 만족하는 든든한 당신." };
+  if (has("샐러드/건강"))
+    return { emoji:"🥗", name:"헬시 라이퍼", desc:"몸에 좋은 한 끼를 챙기는, 꾸준함이 멋진 당신." };
+  return { emoji:"⚖️", name:"밸런스 미식가", desc:"치우침 없이 골고루! 어떤 모임에도 무난하게 어울리는 당신." };
+}
+
+// ---- 두 사람 취향 유사도 (0~1) + 매칭 이유 ----
+function similarity(a, b) {
+  // 1) 카테고리: 자카드 유사도 (겹치는 / 합집합)
+  const setB = new Set(b.cats);
+  const inter = a.cats.filter(c => setB.has(c));
+  const uni = new Set([...a.cats, ...b.cats]);
+  const catSim = uni.size ? inter.length / uni.size : 0;
+  // 2) 매운맛: 차이가 작을수록 유사 (0~5 범위)
+  const spicySim = 1 - Math.abs(a.spicy - b.spicy) / 5;
+  // 3) 예산: 차이가 작을수록 유사 (6000~16000, 폭 10000)
+  const budgetSim = 1 - Math.abs(a.budget - b.budget) / 10000;
+  // 4) 식사량: 0~2 범위
+  const amountSim = 1 - Math.abs(a.amount - b.amount) / 2;
+
+  // 가중합 (음식 취향과 매운맛을 더 중요하게)
+  const score = catSim*0.40 + spicySim*0.30 + budgetSim*0.18 + amountSim*0.12;
+
+  // 매칭 이유 추출
+  const reasons = [];
+  if (inter.length) reasons.push(`${inter.join("·")} 취향 일치`);
+  if (Math.abs(a.spicy-b.spicy) <= 1) reasons.push("매운맛 코드 맞음");
+  if (Math.abs(a.budget-b.budget) <= 1000) reasons.push("예산대 비슷");
+  if (a.amount === b.amount) reasons.push("식사량 비슷");
+  const reason = reasons.length ? reasons.slice(0,2).join(", ") : "취향 분포가 가까움";
+
+  return { score, reason };
+}
+
+// ---- 그룹 취향 기반 식당 추천 ----
+function recommendRestos(group) {
+  const avgSpicy = group.reduce((s,p)=>s+p.spicy,0) / group.length;
+  const avgBudget = group.reduce((s,p)=>s+p.budget,0) / group.length;
+  // 그룹 카테고리 투표
+  const votes = {};
+  group.forEach(p => p.cats.forEach(c => votes[c] = (votes[c]||0)+1));
+
+  const scored = RESTOS.map(r => {
+    const catScore = r.cats.reduce((s,c)=>s+(votes[c]||0),0) / group.length; // 0~
+    const spicyScore = 1 - Math.abs(r.spicy - avgSpicy) / 5;
+    const budgetScore = 1 - Math.abs(r.price - avgBudget) / 10000;
+    const total = catScore*0.5 + spicyScore*0.3 + budgetScore*0.2;
+    return { r, total };
+  }).sort((a,b)=>b.total-a.total);
+
+  return scored.slice(0,3).map(x => x.r);
+}
+
+/* ============== UI 로직 ============== */
+let selectedCats = new Set();
+let amount = 1;
+
+// 카테고리 칩 렌더
+const catChips = document.getElementById("catChips");
+CATS.forEach(c => {
+  const el = document.createElement("div");
+  el.className = "chip"; el.textContent = c;
+  el.onclick = () => {
+    if (selectedCats.has(c)) { selectedCats.delete(c); el.classList.remove("on"); }
+    else { selectedCats.add(c); el.classList.add("on"); }
+  };
+  catChips.appendChild(el);
+});
+
+// 슬라이더 표시
+const spicy = document.getElementById("spicy");
+const spicyVal = document.getElementById("spicyVal");
+const SPICY_LABEL = ["순한맛","약간","보통","칼칼","매움","핵불닭"];
+const updSpicy = () => spicyVal.textContent = "🌶️ " + SPICY_LABEL[spicy.value];
+spicy.oninput = updSpicy; updSpicy();
+
+const budget = document.getElementById("budget");
+const budgetVal = document.getElementById("budgetVal");
+const updBudget = () => budgetVal.textContent = Number(budget.value).toLocaleString() + "원";
+budget.oninput = updBudget; updBudget();
+
+// 식사량 세그먼트
+document.querySelectorAll("#amountSeg .chip").forEach(el => {
+  el.onclick = () => {
+    document.querySelectorAll("#amountSeg .chip").forEach(x=>x.classList.remove("on"));
+    el.classList.add("on");
+    amount = Number(el.dataset.amount);
+  };
+});
+
+// 제출
+document.getElementById("submitBtn").onclick = () => {
+  const nick = document.getElementById("nick").value.trim();
+  const err = document.getElementById("err");
+  if (!nick || selectedCats.size === 0) { err.style.display = "block"; return; }
+  err.style.display = "none";
+
+  const me = {
+    nick, cats:[...selectedCats],
+    spicy:Number(spicy.value), budget:Number(budget.value), amount
+  };
+  renderResult(me);
+  joinRoom(me);
+};
+
+document.getElementById("retryBtn").onclick = () => {
+  document.getElementById("result").style.display = "none";
+  document.getElementById("form").scrollIntoView();
+};
+
+// 하트
+let liked = false;
+document.getElementById("heartBtn").onclick = function() {
+  liked = !liked;
+  const c = document.getElementById("likeCount");
+  c.textContent = Number(c.textContent) + (liked ? 1 : -1);
+  this.classList.toggle("liked", liked);
+  this.firstChild.textContent = liked ? "❤️ 좋아요 " : "🤍 좋아요 ";
+};
+
+/* ============== 결과 렌더 ============== */
+function renderResult(me) {
+  // 1) 밥BTI 타입
+  const t = decideType(me);
+  document.getElementById("typeEmoji").textContent = t.emoji;
+  document.getElementById("typeName").textContent = t.name;
+  document.getElementById("typeDesc").textContent = t.desc;
+  document.getElementById("typeNick").textContent = `@${me.nick} 님의 밥BTI`;
+
+  // 2) 밥메이트 (유사도 상위 3명)
+  const ranked = PEOPLE
+    .map(p => ({ p, ...similarity(me, p) }))
+    .sort((a,b)=>b.score-a.score);
+  const mates = ranked.slice(0,3);
+
+  const matesEl = document.getElementById("mates");
+  matesEl.innerHTML = "";
+  const AVATARS = ["🦊","🐻","🐰","🐼","🐱","🐯","🐧","🦁","🐨"];
+  mates.forEach((m,i) => {
+    const pct = Math.round(m.score*100);
+    const div = document.createElement("div");
+    div.className = "mate";
+    div.innerHTML =
+      `<div class="av">${AVATARS[i % AVATARS.length]}</div>
+       <div class="info">
+         <div class="nm">${m.p.nick}</div>
+         <div class="rs">${m.reason}</div>
+       </div>
+       <div class="pct"><div class="n">${pct}%</div><div class="l">일치</div></div>`;
+    matesEl.appendChild(div);
+  });
+
+  // 3) 식당 추천 (나 + 밥메이트 그룹 기준)
+  const group = [me, ...mates.map(m=>m.p)];
+  const recs = recommendRestos(group);
+  const restosEl = document.getElementById("restos");
+  restosEl.innerHTML = "";
+  const RANK = ["1순위","2순위","3순위"];
+  recs.forEach((r,i) => {
+    const div = document.createElement("div");
+    div.className = "resto";
+    div.innerHTML =
+      `<div class="top">
+         <span class="rico">${r.ico}</span>
+         <span class="rnm">${r.name}</span>
+         <span class="rank">${RANK[i]}</span>
+       </div>
+       <div class="meta">
+         <span class="tag">${r.cats.join("·")}</span>
+         <span class="tag">🌶️ ${SPICY_LABEL[r.spicy]}</span>
+         <span class="tag">💰 ${r.price.toLocaleString()}원</span>
+       </div>
+       <div class="why">${r.desc} — 우리 그룹 취향이랑 잘 맞아요!</div>`;
+    restosEl.appendChild(div);
+  });
+
+  // 4) 반 통계 (나 포함 16명)
+  const all = [me, ...PEOPLE];
+  renderSpicyStats(all);
+  renderCatStats(all);
+
+  // 표시 + 스크롤
+  const res = document.getElementById("result");
+  res.style.display = "block";
+  res.scrollIntoView({ behavior:"smooth" });
+}
+
+function bar(label, count, max) {
+  const pct = max ? (count/max*100) : 0;
+  return `<div class="bar-row">
+    <span class="lbl">${label}</span>
+    <span class="bar-track"><span class="bar-fill" style="width:0"></span></span>
+    <span class="cnt">${count}</span>
+  </div>`;
+}
+function animateBars(container, counts, max) {
+  const fills = container.querySelectorAll(".bar-fill");
+  requestAnimationFrame(() => {
+    fills.forEach((f,i) => f.style.width = (max ? counts[i]/max*100 : 0) + "%");
+  });
+}
+
+function renderSpicyStats(all) {
+  const counts = [0,0,0,0,0,0];
+  all.forEach(p => counts[p.spicy]++);
+  const max = Math.max(...counts);
+  const el = document.getElementById("spicyStats");
+  el.innerHTML = SPICY_LABEL.map((lb,i)=>bar(`🌶️ ${lb}`, counts[i], max)).join("");
+  animateBars(el, counts, max);
+}
+
+function renderCatStats(all) {
+  const votes = {};
+  CATS.forEach(c => votes[c]=0);
+  all.forEach(p => p.cats.forEach(c => votes[c]++));
+  const sorted = Object.entries(votes).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const max = sorted[0][1];
+  const el = document.getElementById("catStats");
+  el.innerHTML = sorted.map(([c,n])=>bar(c, n, max)).join("");
+  animateBars(el, sorted.map(s=>s[1]), max);
+}
+
+/* ====== 라이브 룸 (Firebase Realtime DB) ====== */
+let roomRef = null;
+
+// 공개 룸이라 외부 입력 닉네임은 반드시 이스케이프
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+
+function roomCode() {
+  return (document.getElementById("room").value.trim() || "lunch").toLowerCase();
+}
+
+function joinRoom(me) {
+  const status = document.getElementById("liveStatus");
+  const resetBtn = document.getElementById("resetRoomBtn");
+
+  // Firebase 미설정 시 → 단일 기기 데모 모드로 안내하고 종료
+  if (!FIREBASE_ON) {
+    status.innerHTML = "⚙️ Firebase 미설정 — 지금은 <b>단일 기기 데모 모드</b>예요.<br/>설정하면 같은 룸 코드끼리 실시간 매칭이 켜져요!";
+    return;
+  }
+
+  const code = roomCode();
+  roomRef = db.ref("rooms/" + code + "/members");
+
+  // 내 입력 등록
+  roomRef.push({
+    nick: me.nick, cats: me.cats, spicy: me.spicy,
+    budget: me.budget, amount: me.amount, ts: Date.now()
+  });
+
+  // 실시간 수신 → 누가 들어오거나 나가면 자동 갱신
+  roomRef.on("value", snap => {
+    const val = snap.val() || {};
+    const members = Object.values(val).map(m => ({
+      ...m, cats: Array.isArray(m.cats) ? m.cats : Object.values(m.cats || {})
+    }));
+    renderLive(members, code);
+  });
+
+  // 재시연용 룸 비우기
+  if (resetBtn) {
+    resetBtn.style.display = "inline-block";
+    resetBtn.onclick = () => {
+      if (confirm("이 룸(" + roomCode() + ")의 참여자 데이터를 모두 지울까요?"))
+        db.ref("rooms/" + roomCode() + "/members").remove();
+    };
+  }
+}
+
+function renderLive(members, code) {
+  document.getElementById("liveStatus").innerHTML =
+    `📍 룸 <b>${code}</b> · 지금 <b>${members.length}명</b> 참여 중`;
+
+  const el = document.getElementById("liveGroups");
+  if (members.length < 2) {
+    el.innerHTML = `<p class="hint" style="margin-top:10px">친구들이 같은 룸 코드(<b>${code}</b>)로 들어오면 자동으로 그룹이 짜여요! 🎉</p>`;
+    return;
+  }
+
+  const groups = formGroups(members, 4);
+  el.innerHTML = groups.map((g,i) => {
+    const recs = recommendRestos(g);
+    const names = g.map(p => `${decideType(p).emoji} ${esc(p.nick)}`).join(" · ");
+    return `<div class="resto" style="margin-top:12px">
+      <div class="top">
+        <span class="rico">👥</span><span class="rnm">${i+1}조 · ${g.length}명</span>
+      </div>
+      <div class="why" style="margin-top:8px">${names}</div>
+      <div class="meta"><span class="tag">🍴 추천 식당: ${recs[0].ico} ${recs[0].name}</span></div>
+    </div>`;
+  }).join("");
+}
+
+// 그리디 그룹핑: 취향 비슷한 사람끼리 size명씩 묶기
+function formGroups(members, size) {
+  const pool = members.slice();
+  const groups = [];
+  while (pool.length) {
+    const seed = pool.shift();
+    const g = [seed];
+    pool.sort((a,b) => similarity(seed,b).score - similarity(seed,a).score);
+    while (g.length < size && pool.length) g.push(pool.shift());
+    groups.push(g);
+  }
+  return groups;
+}
+</script>
+</body>
+</html>
