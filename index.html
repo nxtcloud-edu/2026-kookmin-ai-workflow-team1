@@ -80,8 +80,6 @@
   }
   .chip:hover { border-color: #ffd2c6; }
   .chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
-  .chip-group-label { flex-basis: 100%; font-size: 12.5px; font-weight: 700; color: var(--muted); margin-top: 8px; }
-  .chip-group-label:first-child { margin-top: 0; }
 
   /* slider */
   .slider-row { display: flex; align-items: center; gap: 14px; }
@@ -308,8 +306,9 @@
       </div>
 
       <div class="field">
-        <label>좋아하는 음식 <span class="desc">여러 개 선택 가능</span></label>
+        <label>좋아하는 음식 <span class="desc">분류를 누르면 메뉴가 떠요 · 여러 개 선택 가능</span></label>
         <div class="chips" id="catChips"></div>
+        <div class="chips" id="dishPanel" style="margin-top:10px"></div>
       </div>
 
       <div class="field">
@@ -680,7 +679,8 @@ ${matesDesc}
 
 /* ============== UI 로직 ============== */
 let selectedDishes = new Set();   // 선택한 세부 음식 이름
-let selectedCats = new Set();     // 위에서 매핑된 카테고리 (매칭/통계/추천에 사용)
+let selectedCats = new Set();     // 매핑된 카테고리 (매칭/통계/추천에 사용)
+let openCat = null;               // 현재 펼친 분류
 let amount = 1;
 
 // 선택한 세부 음식 → 카테고리 집합 재계산
@@ -689,27 +689,49 @@ function recomputeCats() {
   DISHES.forEach(d => { if (selectedDishes.has(d.name)) selectedCats.add(d.cat); });
 }
 
-// 세부 음식 칩 렌더 (카테고리별 그룹)
 const catChips = document.getElementById("catChips");
-CATS.forEach(cat => {
-  const label = document.createElement("div");
-  label.className = "chip-group-label";
-  label.textContent = cat;
-  catChips.appendChild(label);
+const dishPanel = document.getElementById("dishPanel");
 
-  DISHES.filter(d => d.cat === cat).forEach(d => {
-    const el = document.createElement("div");
-    el.className = "chip";
-    el.textContent = d.name;
-    el.dataset.dish = d.name;
-    el.dataset.cat = cat;
-    el.onclick = () => {
-      if (selectedDishes.has(d.name)) { selectedDishes.delete(d.name); el.classList.remove("on"); }
-      else { selectedDishes.add(d.name); el.classList.add("on"); }
-      recomputeCats();
-    };
-    catChips.appendChild(el);
+// 분류 칩: 펼쳐져 있거나(open) 선택된 메뉴가 있으면 강조
+function refreshCatChips() {
+  catChips.querySelectorAll(".chip").forEach(el => {
+    const cat = el.dataset.cat;
+    const hasSel = DISHES.some(d => d.cat === cat && selectedDishes.has(d.name));
+    el.classList.toggle("on", cat === openCat || hasSel);
   });
+}
+
+// 펼친 분류의 메뉴(세부 음식) 칩 렌더
+function renderDishPanel() {
+  dishPanel.innerHTML = "";
+  if (!openCat) return;
+  DISHES.filter(d => d.cat === openCat).forEach(d => {
+    const el = document.createElement("div");
+    el.className = "chip" + (selectedDishes.has(d.name) ? " on" : "");
+    el.textContent = d.name;
+    el.onclick = () => {
+      if (selectedDishes.has(d.name)) selectedDishes.delete(d.name);
+      else selectedDishes.add(d.name);
+      el.classList.toggle("on");
+      recomputeCats();
+      refreshCatChips();
+    };
+    dishPanel.appendChild(el);
+  });
+}
+
+// 분류 칩 렌더 (누르면 해당 메뉴가 아래에 펼쳐짐)
+CATS.forEach(cat => {
+  const el = document.createElement("div");
+  el.className = "chip";
+  el.textContent = cat;
+  el.dataset.cat = cat;
+  el.onclick = () => {
+    openCat = (openCat === cat) ? null : cat;  // 같은 분류 다시 누르면 닫힘
+    renderDishPanel();
+    refreshCatChips();
+  };
+  catChips.appendChild(el);
 });
 
 // 슬라이더 표시
@@ -877,9 +899,8 @@ function fillFormFromData(data) {
     cats.forEach(cat => { const f = DISHES.find(d => d.cat === cat); if (f) selectedDishes.add(f.name); });
   }
   recomputeCats();
-  document.querySelectorAll("#catChips .chip").forEach(el => {
-    if (selectedDishes.has(el.dataset.dish)) el.classList.add("on");
-  });
+  refreshCatChips();
+  renderDishPanel();
   if (data.spicy !== undefined) { spicy.value = data.spicy; updSpicy(); }
   if (data.salty !== undefined) { salty.value = data.salty; updSalty(); }
   if (data.sweet !== undefined) { sweet.value = data.sweet; updSweet(); }
