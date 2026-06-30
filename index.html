@@ -566,10 +566,9 @@
    - 결과: 밥BTI 타입 + 밥메이트 + 식당 추천 + 반 통계
    ========================================================= */
 
-// ---- Claude API 설정 ----
-// ★ 여기에 Anthropic API 키를 붙여넣으세요 (console.anthropic.com > API Keys)
-const ANTHROPIC_KEY = "PASTE_ANTHROPIC_API_KEY";
-const ANTHROPIC_ON = !ANTHROPIC_KEY.startsWith("PASTE");
+// ---- Claude API 설정 (Amazon Bedrock Lambda 프록시) ----
+const BEDROCK_API_URL = "https://ucdwp10yu1.execute-api.us-east-1.amazonaws.com/ai-comment";
+const ANTHROPIC_ON = true;
 
 // ---- 음식 카테고리 정의 (유사도·통계·추천의 내부 매칭 차원) ----
 const CATS = ["한식","중식","일식","양식","분식","고기","면류","카페/디저트","샐러드/건강"];
@@ -745,24 +744,15 @@ ${matesDesc}
 위 매칭이 왜 잘 맞는지 2~3문장으로 재미있고 따뜻하게 한국어로 코멘트해주세요. 이모지 1~2개 포함. 150자 이내. 딱딱하지 않게 친구처럼.`;
 
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const res = await fetch(BEDROCK_API_URL, {
       method: "POST",
-      headers: {
-        "x-api-key": ANTHROPIC_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-        "anthropic-dangerous-direct-browser-access": "true"
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5",
-        max_tokens: 200,
-        messages: [{ role: "user", content: prompt }]
-      })
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ prompt })
     });
     const data = await res.json();
     aiStatus.style.display = "none";
-    if (data.content && data.content[0] && data.content[0].text) {
-      aiComment.textContent = data.content[0].text;
+    if (data.text) {
+      aiComment.textContent = data.text;
     } else {
       aiComment.textContent = "코멘트를 생성하지 못했어요. API 응답을 확인해주세요.";
     }
