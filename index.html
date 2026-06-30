@@ -80,6 +80,8 @@
   }
   .chip:hover { border-color: #ffd2c6; }
   .chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .chip-group-label { flex-basis: 100%; font-size: 12.5px; font-weight: 700; color: var(--muted); margin-top: 8px; }
+  .chip-group-label:first-child { margin-top: 0; }
 
   /* slider */
   .slider-row { display: flex; align-items: center; gap: 14px; }
@@ -473,8 +475,22 @@
 const ANTHROPIC_KEY = "PASTE_ANTHROPIC_API_KEY";
 const ANTHROPIC_ON = !ANTHROPIC_KEY.startsWith("PASTE");
 
-// ---- 음식 카테고리 정의 ----
+// ---- 음식 카테고리 정의 (유사도·통계·추천의 내부 매칭 차원) ----
 const CATS = ["한식","중식","일식","양식","분식","고기","면류","카페/디저트","샐러드/건강"];
+
+// ---- 선택용 대표 세부 음식 (각 음식은 9개 카테고리 중 하나로 매핑) ----
+// 사용자는 구체적인 음식을 고르고, 내부적으로는 cat 으로 매핑돼 기존 매칭 로직이 그대로 동작
+const DISHES = [
+  { name:"김치찌개", cat:"한식" }, { name:"된장찌개", cat:"한식" }, { name:"비빔밥", cat:"한식" }, { name:"제육볶음", cat:"한식" },
+  { name:"짜장면", cat:"중식" }, { name:"짬뽕", cat:"중식" }, { name:"탕수육", cat:"중식" }, { name:"마라탕", cat:"중식" },
+  { name:"초밥", cat:"일식" }, { name:"라멘", cat:"일식" }, { name:"돈카츠", cat:"일식" }, { name:"우동", cat:"일식" },
+  { name:"파스타", cat:"양식" }, { name:"피자", cat:"양식" }, { name:"스테이크", cat:"양식" }, { name:"햄버거", cat:"양식" },
+  { name:"떡볶이", cat:"분식" }, { name:"김밥", cat:"분식" }, { name:"순대", cat:"분식" }, { name:"라면", cat:"분식" },
+  { name:"삼겹살", cat:"고기" }, { name:"소갈비", cat:"고기" }, { name:"닭갈비", cat:"고기" }, { name:"족발·보쌈", cat:"고기" },
+  { name:"칼국수", cat:"면류" }, { name:"냉면", cat:"면류" }, { name:"쌀국수", cat:"면류" },
+  { name:"커피", cat:"카페/디저트" }, { name:"케이크", cat:"카페/디저트" }, { name:"빙수", cat:"카페/디저트" }, { name:"브런치", cat:"카페/디저트" },
+  { name:"샐러드", cat:"샐러드/건강" }, { name:"포케", cat:"샐러드/건강" }, { name:"샌드위치", cat:"샐러드/건강" },
+];
 
 // ---- 가상 학과 단톡방 15명 (데모 샘플 데이터) ----
 // cats: 선호 카테고리 / spicy 0~5 / budget 원 / amount 0~2
@@ -663,19 +679,37 @@ ${matesDesc}
 }
 
 /* ============== UI 로직 ============== */
-let selectedCats = new Set();
+let selectedDishes = new Set();   // 선택한 세부 음식 이름
+let selectedCats = new Set();     // 위에서 매핑된 카테고리 (매칭/통계/추천에 사용)
 let amount = 1;
 
-// 카테고리 칩 렌더
+// 선택한 세부 음식 → 카테고리 집합 재계산
+function recomputeCats() {
+  selectedCats = new Set();
+  DISHES.forEach(d => { if (selectedDishes.has(d.name)) selectedCats.add(d.cat); });
+}
+
+// 세부 음식 칩 렌더 (카테고리별 그룹)
 const catChips = document.getElementById("catChips");
-CATS.forEach(c => {
-  const el = document.createElement("div");
-  el.className = "chip"; el.textContent = c;
-  el.onclick = () => {
-    if (selectedCats.has(c)) { selectedCats.delete(c); el.classList.remove("on"); }
-    else { selectedCats.add(c); el.classList.add("on"); }
-  };
-  catChips.appendChild(el);
+CATS.forEach(cat => {
+  const label = document.createElement("div");
+  label.className = "chip-group-label";
+  label.textContent = cat;
+  catChips.appendChild(label);
+
+  DISHES.filter(d => d.cat === cat).forEach(d => {
+    const el = document.createElement("div");
+    el.className = "chip";
+    el.textContent = d.name;
+    el.dataset.dish = d.name;
+    el.dataset.cat = cat;
+    el.onclick = () => {
+      if (selectedDishes.has(d.name)) { selectedDishes.delete(d.name); el.classList.remove("on"); }
+      else { selectedDishes.add(d.name); el.classList.add("on"); }
+      recomputeCats();
+    };
+    catChips.appendChild(el);
+  });
 });
 
 // 슬라이더 표시
@@ -732,7 +766,7 @@ document.getElementById("submitBtn").onclick = () => {
   err.style.display = "none";
   const nick = currentUser ? currentUser.nick : document.getElementById("nick").value.trim();
   const me = {
-    nick, cats:[...selectedCats],
+    nick, cats:[...selectedCats], dishes:[...selectedDishes],
     spicy:Number(spicy.value), salty:Number(salty.value), sweet:Number(sweet.value), herb,
     budget:Number(budget.value), amount
   };
@@ -823,19 +857,32 @@ function enterSession(user) {
 function saveUserPrefs(me) {
   if (!FIREBASE_ON || !currentUser) return;
   db.ref("users/" + encodeURIComponent(me.nick)).update({
-    cats: me.cats, spicy: me.spicy, budget: me.budget, amount: me.amount, lastSeen: Date.now()
+    cats: me.cats, dishes: me.dishes || [], spicy: me.spicy, salty: me.salty, sweet: me.sweet, herb: me.herb,
+    budget: me.budget, amount: me.amount, lastSeen: Date.now()
+  });
+  // 메모리상의 currentUser도 즉시 동기화 (룸 입장 시 최신 취향 사용)
+  if (currentUser) Object.assign(currentUser, {
+    cats: me.cats, dishes: me.dishes || [], spicy: me.spicy, salty: me.salty, sweet: me.sweet, herb: me.herb,
+    budget: me.budget, amount: me.amount
   });
 }
 
 function fillFormFromData(data) {
   const cats = Array.isArray(data.cats) ? data.cats : Object.values(data.cats || {});
-  cats.forEach(c => {
-    selectedCats.add(c);
-    document.querySelectorAll("#catChips .chip").forEach(el => {
-      if (el.textContent === c) el.classList.add("on");
-    });
+  const dishes = Array.isArray(data.dishes) ? data.dishes : Object.values(data.dishes || {});
+  if (dishes.length) {
+    dishes.forEach(name => selectedDishes.add(name));
+  } else {
+    // 구버전(카테고리만 저장됨) → 각 카테고리의 첫 대표 음식 선택
+    cats.forEach(cat => { const f = DISHES.find(d => d.cat === cat); if (f) selectedDishes.add(f.name); });
+  }
+  recomputeCats();
+  document.querySelectorAll("#catChips .chip").forEach(el => {
+    if (selectedDishes.has(el.dataset.dish)) el.classList.add("on");
   });
   if (data.spicy !== undefined) { spicy.value = data.spicy; updSpicy(); }
+  if (data.salty !== undefined) { salty.value = data.salty; updSalty(); }
+  if (data.sweet !== undefined) { sweet.value = data.sweet; updSweet(); }
   if (data.budget !== undefined) { budget.value = data.budget; updBudget(); }
   if (data.amount !== undefined) {
     amount = data.amount;
@@ -1163,7 +1210,14 @@ function osmToResto(el) {
   return { name, lat, lon, cats, rawCuisine: t.cuisine || "", ico };
 }
 
-// Overpass API로 주변 음식점 검색 (키 불필요)
+// Overpass 공개 미러들 — 하나가 막히면(429/타임아웃) 다음으로 자동 폴백
+const OVERPASS_ENDPOINTS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter"
+];
+
+// Overpass API로 주변 음식점 검색 (키 불필요, 미러 순차 폴백)
 async function fetchNearbyRestos(lat, lon, radius) {
   const filter = `["amenity"~"^(restaurant|fast_food|cafe)$"]`;
   const q =
@@ -1171,14 +1225,28 @@ async function fetchNearbyRestos(lat, lon, radius) {
     `node${filter}(around:${radius},${lat},${lon});` +
     `way${filter}(around:${radius},${lat},${lon});` +
     `);out center 100;`;
-  const res = await fetch("https://overpass-api.de/api/interpreter", {
-    method: "POST",
-    headers: { "Accept": "application/json" },
-    body: "data=" + encodeURIComponent(q)
-  });
-  if (!res.ok) throw new Error("Overpass " + res.status);
-  const json = await res.json();
-  return (json.elements || []).map(osmToResto).filter(Boolean);
+  const body = "data=" + encodeURIComponent(q);
+
+  let lastErr;
+  for (const ep of OVERPASS_ENDPOINTS) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 12000);  // 12초 넘으면 다음 미러로
+      const res = await fetch(ep, {
+        method: "POST",
+        headers: { "Accept": "application/json" },
+        body,
+        signal: ctrl.signal
+      });
+      clearTimeout(timer);
+      if (!res.ok) { lastErr = new Error("Overpass " + res.status); continue; }  // 429/504 → 다음 미러
+      const json = await res.json();
+      return (json.elements || []).map(osmToResto).filter(Boolean);
+    } catch (e) {
+      lastErr = e;  // 네트워크/타임아웃 → 다음 미러
+    }
+  }
+  throw (lastErr || new Error("Overpass 모든 미러 실패"));
 }
 
 // 위치 1회 획득 + 주변 식당 캐시 (첫 토글 클릭 시 1번만 호출)
@@ -1299,23 +1367,47 @@ function loadMenuRestos(menu, detailEl) {
 let roomRef = null;
 let chatRef = null;
 
-// 룸 목록에서 입장 버튼 클릭 시
+// 룸 목록에서 입장 버튼 클릭 시 — 취향 입력 여부와 상관없이 항상 입장 + 채팅 시작
 function enterRoom(code) {
+  if (!FIREBASE_ON) {
+    alert("실시간 룸은 Firebase 연결 시 동작해요. (지금은 단일 기기 데모 모드)");
+    return;
+  }
   document.getElementById("room").value = code;
+
+  const nick = (currentUser && currentUser.nick)
+    || document.getElementById("nick").value.trim()
+    || ("익명" + Math.floor(Math.random() * 1000));
+
+  // 저장된 취향이 있으면 사용, 없으면 현재 폼 입력값(기본값 포함) 사용 → 취향 없어도 입장/채팅 가능
+  let me;
   if (currentUser && currentUser.cats) {
     const cats = Array.isArray(currentUser.cats) ? currentUser.cats : Object.values(currentUser.cats || {});
-    const me = {
-      nick: currentUser.nick, cats,
-      spicy: currentUser.spicy || 2, salty: currentUser.salty || 1,
-      sweet: currentUser.sweet || 1, herb: currentUser.herb || 0,
-      budget: currentUser.budget || 10000, amount: currentUser.amount !== undefined ? currentUser.amount : 1
+    const dishes = Array.isArray(currentUser.dishes) ? currentUser.dishes : Object.values(currentUser.dishes || {});
+    me = {
+      nick, cats, dishes,
+      spicy: currentUser.spicy ?? 2, salty: currentUser.salty ?? 1,
+      sweet: currentUser.sweet ?? 1, herb: currentUser.herb ?? 0,
+      budget: currentUser.budget ?? 10000,
+      amount: currentUser.amount ?? 1
     };
-    saveParticipant(me);
-    renderResult(me);
-    joinRoom(me);
   } else {
-    document.getElementById("form").scrollIntoView({ behavior: "smooth" });
+    me = {
+      nick, cats: [...selectedCats], dishes: [...selectedDishes],
+      spicy: Number(spicy.value), salty: Number(salty.value),
+      sweet: Number(sweet.value), herb,
+      budget: Number(budget.value), amount
+    };
   }
+
+  saveParticipant(me);
+  renderResult(me);
+  joinRoom(me);
+  // 입장 후 라이브 룸/채팅으로 이동
+  setTimeout(() => {
+    const live = document.getElementById("chatWrap");
+    (live || document.getElementById("result")).scrollIntoView({ behavior: "smooth", block: "center" });
+  }, 200);
 }
 
 function startChat(code, nick) {
