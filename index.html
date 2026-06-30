@@ -316,6 +316,12 @@
     transition:background .1s, border-color .1s;
   }
   .room-enter-btn:hover { background:#fff3ef; border-color:var(--primary); color:var(--primary); }
+  .copy-code-btn {
+    background:var(--primary); color:#fff; border:none; border-radius:8px;
+    padding:3px 10px; font-size:12px; font-weight:700; cursor:pointer;
+    margin-left:10px; font-family:inherit; transition:opacity .15s;
+  }
+  .copy-code-btn:active { opacity:.75; }
 
   @media (max-width:480px) {
     .hero h1 { font-size:42px; letter-spacing:-2px; }
@@ -1643,9 +1649,18 @@ function joinRoom(me) {
   });
 }
 
+function copyRoomCode(code) {
+  navigator.clipboard.writeText(code)
+    .then(() => {
+      const btn = document.querySelector(".copy-code-btn");
+      if (btn) { btn.textContent = "✅ 복사됨!"; setTimeout(() => btn.textContent = "📋 코드 복사", 2000); }
+    })
+    .catch(() => prompt("룸 코드를 복사하세요:", code));
+}
+
 function renderLive(members, code) {
   document.getElementById("liveStatus").innerHTML =
-    `📍 룸 <b>${code}</b> · 지금 <b>${members.length}명</b> 참여 중`;
+    `📍 룸 <b>${code}</b> · 지금 <b>${members.length}명</b> 참여 중 <button class="copy-code-btn" onclick="copyRoomCode('${esc(code)}')">📋 코드 복사</button>`;
 
   const el = document.getElementById("liveGroups");
   if (members.length < 2) {
