@@ -790,21 +790,13 @@
 <!-- Firebase (Realtime Database) — 실시간 룸 매칭용 -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="firebase-config.local.js"></script>
 <script>
-  /* ★ 여기에 본인 Firebase 프로젝트 설정을 붙여넣으세요 (콘솔 > 프로젝트 설정 > 웹앱) ★
-     설정 안 하면 자동으로 '단일 기기 데모 모드'로 동작합니다. */
-  const firebaseConfig = {
-    apiKey:            "REMOVED_REPOSITORY_KEY",
-    authDomain:        "babbti.firebaseapp.com",
-    databaseURL:       "https://babbti-default-rtdb.firebaseio.com",
-    projectId:         "babbti",
-    storageBucket:     "babbti.firebasestorage.app",
-    messagingSenderId: "570497484043",
-    appId:             "1:570497484043:web:d3d1a8b75065ff0f3a4e0e"
-  };
+  // 배포 환경에서 제공하는 공개 클라이언트 설정. 설정이 없으면 단일 기기 데모.
+  const firebaseConfig = window.FIREBASE_CONFIG || {};
   let db = null, FIREBASE_ON = false;
   try {
-    if (!firebaseConfig.apiKey.startsWith("PASTE")) {
+    if (firebaseConfig.apiKey && firebaseConfig.databaseURL && firebaseConfig.projectId) {
       firebase.initializeApp(firebaseConfig);
       db = firebase.database();
       FIREBASE_ON = true;

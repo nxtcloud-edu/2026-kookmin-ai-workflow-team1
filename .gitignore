@@ -2,3 +2,9 @@ LLM-Wiki/
 
 # 개인 LLM-Wiki 경로 포인터 (사람마다 절대경로가 다름)
 .llm-wiki-project
+
+# Deployment-specific client configuration
+firebase-config.local.js
+.env
+.env.*
+!.env.example

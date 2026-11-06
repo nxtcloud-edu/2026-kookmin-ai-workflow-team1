@@ -130,3 +130,18 @@ menu_score = 카테고리 투표합 × 0.38 + 예산 × 0.20 + 매운맛 × 0.15
 | ChoHyeonChan | Firebase 백엔드 / 실시간 동기화 / 라이브 카운터 / 채팅 / Bedrock AI / S3 배포 / UI 고급화 / 참여자·룸 중복 방지 |
 | junseok0929 | 로그아웃 / 좋아요 실시간 / 1:1 DM 모달 / 모바일 반응형 |
 | juneddoha | GPS 식당 추천 / 3단계 위저드 / 5탭 결과 UI / 칩 선택 UX |
+
+## Firebase 환경 설정 (보안 패치)
+
+실제 Firebase 웹 설정값을 저장소에서 제거했습니다. 설정 파일이 없거나 비어 있으면
+Firebase 연결 없이 단일 기기 데모 모드로 실행됩니다.
+
+```bash
+cp firebase-config.example.js firebase-config.local.js
+```
+
+`firebase-config.local.js`에 본인 프로젝트의 **공개 웹앱 설정**을 입력하고,
+다인 매칭을 배포할 때는 이 파일도 `index.html`과 함께 별도로 업로드하세요.
+이 파일은 Git에서 제외됩니다. 웹 설정키는 배포 후 브라우저에서 읽을 수 있으므로
+보안 경계는 Firebase Rules/App Check와 필요한 인증입니다. 관리자/서비스 계정 키는 넣지 마세요.
+기존 공개 설정값 삭제만으로 Firebase 데이터 접근 권한이 바뀌지는 않습니다.
